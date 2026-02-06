@@ -240,7 +240,6 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## 🗺️ Roadmap
 
-- [ ] Suporte a arrastar e soltar (drag & drop)
 - [ ] Criptografia de múltiplos arquivos
 - [ ] Compressão antes da criptografia
 - [ ] Interface em outros idiomas
