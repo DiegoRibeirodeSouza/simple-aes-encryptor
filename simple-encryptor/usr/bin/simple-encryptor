@@ -1,0 +1,742 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Simple AES256 Encryptor - Modern GUI & High Performance
+Criptografia AES-256-CBC com interface visual em tempo real (Sem atrasos)
+"""
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import os
+import secrets
+import threading
+import time
+import queue
+from pathlib import Path
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+
+# --- Configurações Visuais ---
+COLOR_BG_DARK = "#121212"
+COLOR_BG_LIGHT = "#1e1e1e"
+COLOR_ACCENT = "#00ff41"  # "Matrix" Green
+COLOR_TEXT = "#e0e0e0"
+COLOR_TEXT_DIM = "#808080"
+FONT_MAIN = ('Segoe UI', 10)
+FONT_MONO = ('Consolas', 12)
+FONT_HEADER = ('Segoe UI', 16, 'bold')
+
+# --- AES Visualization Logic (Full Mathematical Detail) ---
+class AESVisualizer:
+    # ... (s_box, r_con same as before)
+    s_box = (
+        0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
+        0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
+        0xB7, 0xFD, 0x93, 0x26, 0x36, 0x3F, 0xF7, 0xCC, 0x34, 0xA5, 0xE5, 0xF1, 0x71, 0xD8, 0x31, 0x15,
+        0x04, 0xC7, 0x23, 0xC3, 0x18, 0x96, 0x05, 0x9A, 0x07, 0x12, 0x80, 0xE2, 0xEB, 0x27, 0xB2, 0x75,
+        0x09, 0x83, 0x2C, 0x1A, 0x1B, 0x6E, 0x5A, 0xA0, 0x52, 0x3B, 0xD6, 0xB3, 0x29, 0xE3, 0x2F, 0x84,
+        0x53, 0xD1, 0x00, 0xED, 0x20, 0xFC, 0xB1, 0x5B, 0x6A, 0xCB, 0xBE, 0x39, 0x4A, 0x4C, 0x58, 0xCF,
+        0xD0, 0xEF, 0xAA, 0xFB, 0x43, 0x4D, 0x33, 0x85, 0x45, 0xF9, 0x02, 0x7F, 0x50, 0x3C, 0x9F, 0xA8,
+        0x51, 0xA3, 0x40, 0x8F, 0x92, 0x9D, 0x38, 0xF5, 0xBC, 0xB6, 0xDA, 0x21, 0x10, 0xFF, 0xF3, 0xD2,
+        0xCD, 0x0C, 0x13, 0xEC, 0x5F, 0x97, 0x44, 0x17, 0xC4, 0xA7, 0x7E, 0x3D, 0x64, 0x5D, 0x19, 0x73,
+        0x60, 0x81, 0x4F, 0xDC, 0x22, 0x2A, 0x90, 0x88, 0x46, 0xEE, 0xB8, 0x14, 0xDE, 0x5E, 0x0B, 0xDB,
+        0xE0, 0x32, 0x3A, 0x0A, 0x49, 0x06, 0x24, 0x5C, 0xC2, 0xD3, 0xAC, 0x62, 0x91, 0x95, 0xE4, 0x79,
+        0xE7, 0xC8, 0x37, 0x6D, 0x8D, 0xD5, 0x4E, 0xA9, 0x6C, 0x56, 0xF4, 0xEA, 0x65, 0x7A, 0xAE, 0x08,
+        0xBA, 0x78, 0x25, 0x2E, 0x1C, 0xA6, 0xB4, 0xC6, 0xE8, 0xDD, 0x74, 0x1F, 0x4B, 0xBD, 0x8B, 0x8A,
+        0x70, 0x3E, 0xB5, 0x66, 0x48, 0x03, 0xF6, 0x0E, 0x61, 0x35, 0x57, 0xB9, 0x86, 0xC1, 0x1D, 0x9E,
+        0xE1, 0xF8, 0x98, 0x11, 0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF,
+        0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16,
+    )
+
+    r_con = (
+        0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40,
+        0x80, 0x1B, 0x36, 0x6C, 0xD8, 0xAB, 0x4D, 0x9A,
+        0x2F, 0x5E, 0xBC, 0x63, 0xC6, 0x97, 0x35, 0x6A,
+        0xD4, 0xB3, 0x7D, 0xFA, 0xEF, 0xC5, 0x91, 0x39,
+    )
+
+    def __init__(self, key, log_callback):
+        self.key = key
+        self.log_callback = log_callback
+        self.rounds = 14  # AES-256
+        self.nb = 4
+        self.nk = 8       # AES-256 key is 8 words (32 bytes)
+        self.w = []       # Key Schedule
+
+    def _gmul(self, a, b):
+        p = 0
+        for _ in range(8):
+            if b & 1:
+                p ^= a
+            hi_bit_set = a & 0x80
+            a <<= 1
+            if hi_bit_set:
+                a ^= 0x1B 
+            b >>= 1
+        return p & 0xFF
+
+    def _key_expansion(self):
+        self.w = [0] * (self.nb * (self.rounds + 1))
+        key = list(self.key)
+        
+        self.log_callback("\n[KEY EXPANSION STARTED]", 'cmd')
+        for i in range(self.nk):
+            self.w[i] = (key[4*i] << 24) | (key[4*i+1] << 16) | (key[4*i+2] << 8) | key[4*i+3]
+        
+        self.log_callback(f"Initial Key Words (0-{self.nk-1}): {[hex(x) for x in self.w[:self.nk]]}", 'info')
+
+        for i in range(self.nk, self.nb * (self.rounds + 1)):
+            temp = self.w[i-1]
+            if i % self.nk == 0:
+                temp = ((temp << 8) & 0xFFFFFFFF) | (temp >> 24)
+                temp = (self.s_box[(temp >> 24) & 0xFF] << 24) | \
+                       (self.s_box[(temp >> 16) & 0xFF] << 16) | \
+                       (self.s_box[(temp >> 8) & 0xFF] << 8) | \
+                       self.s_box[temp & 0xFF]
+                temp ^= (self.r_con[i // self.nk] << 24)
+            elif self.nk > 6 and i % self.nk == 4:
+                temp = (self.s_box[(temp >> 24) & 0xFF] << 24) | \
+                       (self.s_box[(temp >> 16) & 0xFF] << 16) | \
+                       (self.s_box[(temp >> 8) & 0xFF] << 8) | \
+                       self.s_box[temp & 0xFF]
+            
+            self.w[i] = self.w[i - self.nk] ^ temp
+        
+        self.log_callback(f"Expanded Key (60 words generated). Ready.", 'info')
+
+    def visualize_block(self, block):
+        if not self.w:
+            self._key_expansion()
+
+        state = self._bytes_to_matrix(block)
+        
+        self.log_callback("\n[AES VISUALIZATION STARTS]", 'cmd')
+        self.log_callback(f"Input Block: {block.hex(' ')}", 'info')
+        self.log_callback("Initial State Matrix:", 'info')
+        self._log_state(state)
+        
+        # Round 0
+        self.log_callback(f"\n--- ROUND 0 (Whitening) ---", 'cmd')
+        self._add_round_key(state, 0)
+        self.log_callback("Status after AddRoundKey:", 'info')
+        self._log_state(state)
+        
+        for r in range(1, self.rounds + 1):
+            self.log_callback(f"\n--- ROUND {r} ---", 'cmd')
+            
+            self.log_callback("> SubBytes (S-Box Substitution)", 'data')
+            state = self._sub_bytes(state)
+            self._log_state(state)
+            
+            self.log_callback("> ShiftRows (Row Permutation)", 'data')
+            state = self._shift_rows(state)
+            self._log_state(state)
+            
+            if r < self.rounds:
+                self.log_callback("> MixColumns (Galois Field Mult)", 'data')
+                state = self._mix_columns(state)
+                self._log_state(state)
+            
+            self.log_callback(f"> AddRoundKey (Round {r} Key)", 'data')
+            self._add_round_key(state, r)
+            self._log_state(state)
+
+    def _bytes_to_matrix(self, text):
+        return [list(text[i:i+4]) for i in range(0, len(text), 4)]
+
+    def _log_state(self, state):
+        lines = []
+        for r in range(4):
+            row_hex = []
+            for c in range(4):
+                if r < len(state[c]):
+                    row_hex.append(f"{state[c][r]:02x}")
+                else:
+                    row_hex.append("00")
+            lines.append(" ".join(row_hex))
+        msg = "  " + "\n  ".join(lines)
+        self.log_callback(msg, 'info')
+
+    def _sub_bytes(self, state):
+        new_state = []
+        for col in state:
+            new_col = [self.s_box[b] for b in col]
+            new_state.append(new_col)
+        return new_state
+
+    def _shift_rows(self, state):
+        rows = [[state[c][r] for c in range(4)] for r in range(4)]
+        rows[1] = rows[1][1:] + rows[1][:1]
+        rows[2] = rows[2][2:] + rows[2][:2]
+        rows[3] = rows[3][3:] + rows[3][:3]
+        return [[rows[r][c] for r in range(4)] for c in range(4)]
+
+    def _mix_columns(self, state):
+        new_state = []
+        for col in state:
+            s0 = self._gmul(0x02, col[0]) ^ self._gmul(0x03, col[1]) ^ col[2] ^ col[3]
+            s1 = col[0] ^ self._gmul(0x02, col[1]) ^ self._gmul(0x03, col[2]) ^ col[3]
+            s2 = col[0] ^ col[1] ^ self._gmul(0x02, col[2]) ^ self._gmul(0x03, col[3])
+            s3 = self._gmul(0x03, col[0]) ^ col[1] ^ col[2] ^ self._gmul(0x02, col[3])
+            new_state.append([s0, s1, s2, s3])
+        return new_state
+    inv_s_box = [
+        0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+        0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+        0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+        0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+        0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+        0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+        0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+        0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+        0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+        0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+        0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+        0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+        0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+        0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+        0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+        0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
+    ]
+
+    def visualize_decrypt_block(self, block):
+        if not self.w:
+            self._key_expansion()
+
+        state = self._bytes_to_matrix(block)
+        
+        self.log_callback("\n[AES DECRYPT VISUALIZATION]", 'cmd')
+        self.log_callback(f"Ciphertext: {block.hex(' ')}", 'info')
+        self._log_state(state)
+        
+        # Initial Round (AddRoundKey with last key)
+        self.log_callback(f"\n--- ROUND 0 (Inverse) ---", 'cmd')
+        self.log_callback(f"> AddRoundKey (Round {self.rounds} Key)", 'data')
+        self._add_round_key(state, self.rounds)
+        self._log_state(state)
+
+        for r in range(self.rounds - 1, 0, -1):
+            self.log_callback(f"\n--- ROUND {self.rounds - r} ---", 'cmd')
+
+            self.log_callback("> InvShiftRows", 'data')
+            state = self._inv_shift_rows(state)
+            self._log_state(state)
+
+            self.log_callback("> InvSubBytes", 'data')
+            state = self._inv_sub_bytes(state)
+            self._log_state(state)
+
+            self.log_callback(f"> AddRoundKey (Round {r} Key)", 'data')
+            self._add_round_key(state, r)
+            self._log_state(state)
+
+            self.log_callback("> InvMixColumns", 'data')
+            state = self._inv_mix_columns(state)
+            self._log_state(state)
+
+        # Final Round
+        self.log_callback(f"\n--- FINAL ROUND ---", 'cmd')
+        self.log_callback("> InvShiftRows", 'data')
+        state = self._inv_shift_rows(state)
+        self._log_state(state)
+
+        self.log_callback("> InvSubBytes", 'data')
+        state = self._inv_sub_bytes(state)
+        self._log_state(state)
+
+        self.log_callback("> AddRoundKey (Round 0 Key)", 'data')
+        self._add_round_key(state, 0)
+        self._log_state(state)
+
+    def _inv_sub_bytes(self, state):
+        new_state = []
+        for col in state:
+            new_col = [self.inv_s_box[b] for b in col]
+            new_state.append(new_col)
+        return new_state
+
+    def _inv_shift_rows(self, state):
+        rows = [[state[c][r] for c in range(4)] for r in range(4)]
+        # Row 1: Right shift 1
+        rows[1] = rows[1][-1:] + rows[1][:-1]
+        # Row 2: Right shift 2
+        rows[2] = rows[2][-2:] + rows[2][:-2]
+        # Row 3: Right shift 3
+        rows[3] = rows[3][-3:] + rows[3][:-3]
+        return [[rows[r][c] for r in range(4)] for c in range(4)]
+
+    def _inv_mix_columns(self, state):
+        new_state = []
+        for col in state:
+            # 0e 0b 0d 09
+            # 09 0e 0b 0d
+            # 0d 09 0e 0b
+            # 0b 0d 09 0e
+            s0 = self._gmul(0x0e, col[0]) ^ self._gmul(0x0b, col[1]) ^ self._gmul(0x0d, col[2]) ^ self._gmul(0x09, col[3])
+            s1 = self._gmul(0x09, col[0]) ^ self._gmul(0x0e, col[1]) ^ self._gmul(0x0b, col[2]) ^ self._gmul(0x0d, col[3])
+            s2 = self._gmul(0x0d, col[0]) ^ self._gmul(0x09, col[1]) ^ self._gmul(0x0e, col[2]) ^ self._gmul(0x0b, col[3])
+            s3 = self._gmul(0x0b, col[0]) ^ self._gmul(0x0d, col[1]) ^ self._gmul(0x09, col[2]) ^ self._gmul(0x0e, col[3])
+            new_state.append([s0, s1, s2, s3])
+        return new_state
+
+    def _add_round_key(self, state, round_num):
+        start = round_num * self.nb
+        
+        # Capture the round key for visualization first
+        k_matrix = [[0]*4 for _ in range(4)]
+        
+        for c in range(4):
+            word = self.w[start + c]
+            k0 = (word >> 24) & 0xFF
+            k1 = (word >> 16) & 0xFF
+            k2 = (word >> 8) & 0xFF
+            k3 = word & 0xFF
+            
+            k_matrix[c][0] = k0
+            k_matrix[c][1] = k1
+            k_matrix[c][2] = k2
+            k_matrix[c][3] = k3
+            
+            state[c][0] ^= k0
+            state[c][1] ^= k1
+            state[c][2] ^= k2
+            state[c][3] ^= k3
+            
+        self.log_callback("  [Applying Round Key below]:", 'info')
+        self._log_state(k_matrix)
+        self.log_callback("  [Result after XOR]:", 'info')
+
+
+import customtkinter as ctk
+import subprocess
+import shutil
+
+# --- Configurações Visuais (CustomTkinter) ---
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("green")  # Matrix style built-in
+
+class ModernEncryptorApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        
+        # Janela Principal
+        self.title("Simple AES Encryptor | v3.2 Enhanced")
+        self.geometry("1000x750")
+        try:
+             # Load installed application icon for window consistency
+             icon_path = '/usr/share/icons/hicolor/256x256/apps/simple-encryptor.png'
+             self.iconphoto(False, tk.PhotoImage(file=icon_path))
+        except Exception as e:
+             print(f"Icon load error: {e}")
+        
+        # Variáveis de Estado
+        self.selected_file = None
+        self.is_processing = False
+        self.password_var = ctk.StringVar()
+        self.show_password_var = ctk.BooleanVar(value=False)
+        self.status_var = ctk.StringVar(value="Sistema Online - Aguardando Comando")
+        self.visualize_deeply = ctk.BooleanVar(value=True)
+        
+        # Filas para comunicação
+        self.log_queue = queue.Queue()
+        self.visual_data_queue = queue.Queue()
+        self.progress_queue = queue.Queue()
+        
+        self._setup_ui()
+        self._update_ui_loop()
+
+    def _setup_ui(self):
+        # Grid layout config
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(2, weight=1) # Log expands
+        
+        # --- 1. Header Section ---
+        header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
+        
+        lbl_title = ctk.CTkLabel(header_frame, text="SIMPLE AES-256 ENCRYPTOR", 
+                               font=('Roboto Medium', 22), text_color=COLOR_ACCENT)
+        lbl_title.pack(side="left")
+        
+        lbl_ver = ctk.CTkLabel(header_frame, text="v3.5 Final", 
+                             font=('Roboto', 12), text_color="gray")
+        lbl_ver.pack(side="left", padx=10, pady=(8,0))
+
+        # --- 2. Controls Section (Cards) ---
+        controls_frame = ctk.CTkFrame(self)
+        controls_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
+        controls_frame.grid_columnconfigure(1, weight=1)
+        
+        # Card: Arquivo
+        lbl_file_h = ctk.CTkLabel(controls_frame, text="ARQUIVO ALVO", font=('Roboto', 12, 'bold'))
+        lbl_file_h.grid(row=0, column=0, sticky="w", padx=15, pady=(15, 5))
+        
+        file_box = ctk.CTkFrame(controls_frame, fg_color="#2b2b2b")
+        file_box.grid(row=1, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
+        
+        btn_select = ctk.CTkButton(file_box, text="SELECIONAR ARQUIVO", command=self._select_file, 
+                                 width=180, height=35, corner_radius=8, font=('Roboto Medium', 13))
+        btn_select.pack(side="left", padx=10, pady=10)
+        
+        self.lbl_file = ctk.CTkLabel(file_box, text="Nenhum arquivo selecionado", text_color="gray")
+        self.lbl_file.pack(side="left", padx=10, fill="x", expand=True)
+
+        # Card: Segurança
+        lbl_sec_h = ctk.CTkLabel(controls_frame, text="SEGURANÇA", font=('Roboto', 12, 'bold'))
+        lbl_sec_h.grid(row=2, column=0, sticky="w", padx=15, pady=(5, 5))
+        
+        sec_box = ctk.CTkFrame(controls_frame, fg_color="#2b2b2b")
+        sec_box.grid(row=3, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
+        
+        self.entry_pass = ctk.CTkEntry(sec_box, textvariable=self.password_var, show="•", 
+                                     placeholder_text="Digite sua senha...", height=35, font=('Consolas', 13))
+        self.entry_pass.pack(side="left", fill="x", expand=True, padx=10, pady=(10, 5))
+        
+        # Strength Meter
+        self.strength_bar = ctk.CTkProgressBar(sec_box, width=100, height=5)
+        self.strength_bar.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        self.strength_bar.set(0)
+        self.strength_bar.configure(progress_color="red")
+        
+        self.password_var.trace_add("write", self._update_strength)
+        
+        chk_show = ctk.CTkSwitch(sec_box, text="Mostrar", variable=self.show_password_var, 
+                               command=self._toggle_password, onvalue=True, offvalue=False, width=60)
+        chk_show.pack(side="right", padx=15, pady=10)
+
+        # Card: Opções e Ações
+        lbl_opt_h = ctk.CTkLabel(controls_frame, text="OPERAÇÕES", font=('Roboto', 12, 'bold'))
+        lbl_opt_h.grid(row=4, column=0, sticky="w", padx=15, pady=(5, 5))
+        
+        act_box = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        act_box.grid(row=5, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
+        
+        chk_vis = ctk.CTkCheckBox(act_box, text="Deep Vision (Ver Interna do AES)", variable=self.visualize_deeply)
+        chk_vis.pack(side="left")
+        
+        self.btn_decrypt = ctk.CTkButton(act_box, text="🔓 DESCRIPTOGRAFAR", command=self._decrypt_file,
+                                       fg_color="#333", hover_color="#444", width=180, height=40)
+        self.btn_decrypt.pack(side="right", padx=(10, 0))
+
+        self.btn_encrypt = ctk.CTkButton(act_box, text="🔒 CRIPTOGRAFAR", command=self._encrypt_file,
+                                       width=180, height=40)
+        self.btn_encrypt.pack(side="right")
+
+        # --- 3. Monitor Section (Terminal) ---
+        monitor_frame = ctk.CTkFrame(self)
+        monitor_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(10, 20))
+        monitor_frame.grid_rowconfigure(2, weight=1)
+        monitor_frame.grid_columnconfigure(0, weight=1)
+        
+        lbl_term = ctk.CTkLabel(monitor_frame, text=" MONITOR DE CRIPTOGRAFIA EM TEMPO REAL", 
+                              font=('Consolas', 10, 'bold'), text_color=COLOR_ACCENT)
+        lbl_term.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
+        
+        self.progress = ctk.CTkProgressBar(monitor_frame, height=10)
+        self.progress.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+        self.progress.set(0)
+        
+        # Terminal-like Text Widget with Scrollbar (CTkTextbox has built-in scrollbar)
+        term_bg = "#000000"
+        self.txt_log = ctk.CTkTextbox(monitor_frame, fg_color=term_bg, text_color="#cccccc", 
+                             font=FONT_MONO, wrap="none", activate_scrollbars=True)
+        self.txt_log.grid(row=2, column=0, sticky="nsew", padx=2, pady=2)
+        self.txt_log.configure(state="disabled")
+        
+        # Tags work differently in CTkTextbox (it uses standard tkinter tags under the hood, but access is via ._textbox)
+        # We need to configure tags on the internal widget
+        self.txt_log._textbox.tag_config('cmd', foreground='#ffffff', font=('Consolas', 12, 'bold'))
+        self.txt_log._textbox.tag_config('info', foreground='#00bfff', font=FONT_MONO)
+        self.txt_log._textbox.tag_config('success', foreground=COLOR_ACCENT, font=('Consolas', 12, 'bold'))
+        self.txt_log._textbox.tag_config('error', foreground='#ff4444')
+        self.txt_log._textbox.tag_config('data', foreground='#009900', font=FONT_MONO) 
+        
+        # Custom Status Bar below
+        self.lbl_status = ctk.CTkLabel(monitor_frame, textvariable=self.status_var, 
+                                     font=('Consolas', 10), text_color="gray", anchor="w")
+        self.lbl_status.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
+
+    def _update_strength(self, *args):
+        pwd = self.password_var.get()
+        score = 0
+        if not pwd:
+            self.strength_bar.set(0)
+            return
+
+        # Simple robust heuristic
+        length = len(pwd)
+        has_upper = any(c.isupper() for c in pwd)
+        has_lower = any(c.islower() for c in pwd)
+        has_digit = any(c.isdigit() for c in pwd)
+        has_special = any(not c.isalnum() for c in pwd)
+
+        if length >= 8: score += 1
+        if length >= 12: score += 1
+        if has_upper: score += 1
+        if has_lower: score += 1
+        if has_digit: score += 1
+        if has_special: score += 1
+        
+        # Normalize to 0-1 (max score 6 -> 1.0)
+        final_val = min(score / 5.0, 1.0) # 5 points is enough for "Strong"
+        self.strength_bar.set(final_val)
+        
+        if final_val < 0.4:
+            self.strength_bar.configure(progress_color="#ff4444") # Red
+        elif final_val < 0.8:
+            self.strength_bar.configure(progress_color="#ffaa00") # Orange
+        else:
+            self.strength_bar.configure(progress_color=COLOR_ACCENT) # Green
+
+    def _toggle_password(self):
+        self.entry_pass.configure(show='' if self.show_password_var.get() else '•')
+
+    def _select_file(self):
+        """Usa Zenity para diálogo nativo se disponível, senão fallback"""
+        filename = ""
+        zenity_path = shutil.which("zenity")
+        
+        if zenity_path:
+            try:
+                # Zenity command for file selection
+                cmd = [zenity_path, "--file-selection", "--title=Selecione o Arquivo para Criptografia"]
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if result.returncode == 0:
+                    filename = result.stdout.strip()
+            except Exception as e:
+                print(f"Erro ao usar Zenity: {e}")
+        
+        # Fallback se Zenity falhar ou usuário cancelar (mas quiser tentar via TK)
+        # Na verdade se zenity falhar, tentamos TK. Se usuario cancelar, filename vazio.
+        if not filename and not zenity_path: 
+             filename = filedialog.askopenfilename()
+
+        if filename:
+            self.selected_file = filename
+            size = os.path.getsize(filename)
+            self.lbl_file.configure(text=f"{os.path.basename(filename)} ({self._format_size(size)})", text_color="white")
+            self._log(f"Arquivo selecionado: {filename}", 'info')
+
+    def _format_size(self, size):
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} TB"
+
+    def _log(self, message, tag='info'):
+        self.log_queue.put((message, tag))
+
+    def _update_ui_loop(self):
+        try:
+            while not self.log_queue.empty():
+                msg, tag = self.log_queue.get_nowait()
+                self.txt_log.configure(state="normal")
+                # CTkTextbox insert signature: index, text, tags=None
+                self.txt_log.insert("end", f"{msg}\n", tag)
+                self.txt_log.see("end")
+                self.txt_log.configure(state="disabled")
+            
+            latest_chunk = None
+            while not self.visual_data_queue.empty():
+                latest_chunk = self.visual_data_queue.get_nowait()
+            
+            if latest_chunk:
+                hex_data = latest_chunk[:32].hex(' ') 
+                self.status_var.set(f"PROCESSANDO: {hex_data}...")
+            
+            last_progress = None
+            while not self.progress_queue.empty():
+                last_progress = self.progress_queue.get_nowait()
+            
+            if last_progress is not None:
+                self.progress.set(last_progress / 100.0)
+                # Force update to ensure bar moves visually
+                self.update_idletasks()
+                
+        except queue.Empty:
+            pass
+        finally:
+            self.after(50, self._update_ui_loop)
+
+    def _derive_key(self, password: str, salt: bytes) -> bytes:
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+            backend=default_backend()
+        )
+        return kdf.derive(password.encode())
+
+    def _encrypt_file(self):
+        if not self._validate_inputs(): return
+        threading.Thread(target=self._process_file, args=(True,), daemon=True).start()
+
+    def _decrypt_file(self):
+        if not self._validate_inputs(): return
+        threading.Thread(target=self._process_file, args=(False,), daemon=True).start()
+
+    def _validate_inputs(self):
+        if not self.selected_file:
+            messagebox = ctk.CTkInputDialog(text="Erro: Selecione um arquivo", title="Aviso")
+            # CTK doesn't have simple msgbox, use subprocess zenity or print log
+            self._log("AVISO: Selecione um arquivo primeiro!", 'error')
+            return False
+        if not self.password_var.get():
+            self._log("AVISO: Digite uma senha!", 'error')
+            return False
+        if self.is_processing:
+            return False
+        return True
+
+    def _process_file(self, encrypt_mode):
+        self.is_processing = True
+        self._toggle_controls(False)
+        
+        try:
+            op_name = "CRIPTOGRAFIA" if encrypt_mode else "DESCRIPTOGRAFIA"
+            self._log(f"INICIANDO {op_name}...", 'cmd')
+            
+            start_time = time.time()
+            file_size = os.path.getsize(self.selected_file)
+            chunk_size = 64 * 1024
+            
+            # Preparação
+            key = None
+            if encrypt_mode:
+                salt = secrets.token_bytes(16)
+                iv = secrets.token_bytes(16)
+                self._log(f"Gerando Salt e IV...", 'info')
+                key = self._derive_key(self.password_var.get(), salt)
+                cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+                encryptor = cipher.encryptor()
+                
+                output_path = self.selected_file + ".encrypted"
+                
+                with open(output_path, 'wb') as f_out:
+                    f_out.write(salt)
+                    f_out.write(iv)
+            else:
+                self._log("Lendo cabeçalho do arquivo...", 'info')
+                with open(self.selected_file, 'rb') as f_in:
+                    salt = f_in.read(16)
+                    iv = f_in.read(16)
+                
+                key = self._derive_key(self.password_var.get(), salt)
+                cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+                decryptor = cipher.decryptor()
+                
+                output_path = self.selected_file.replace('.encrypted', '') 
+                if output_path == self.selected_file:
+                     output_path += ".decrypted"
+            
+            # Setup Visualizer
+            visualizer = None
+            if self.visualize_deeply.get() and key:
+                visualizer = AESVisualizer(key, self._log)
+
+            # Process
+            if encrypt_mode:
+               self._process_encrypt_stream(self.selected_file, output_path, encryptor, chunk_size, file_size, visualizer)
+            else:
+               start_pos = 0 if encrypt_mode else 32
+               self._process_decrypt_stream(self.selected_file, output_path, decryptor, chunk_size, file_size, start_pos, visualizer)
+
+            duration = time.time() - start_time
+            self._log(f"OPERAÇÃO CONCLUÍDA em {duration:.2f}s", 'success')
+            self._log(f"Arquivo salvo: {os.path.basename(output_path)}", 'success')
+            
+            # Notificação Nativa
+            subprocess.run(['notify-send', "Concluído", f"Arquivo: {os.path.basename(output_path)}"])
+            
+        except Exception as e:
+            self._log(f"ERRO CRÍTICO: {str(e)}", 'error')
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.is_processing = False
+            self._toggle_controls(True)
+            self.progress_queue.put(0)
+            self.status_var.set("Sistema Online - Aguardando Comando")
+
+    def _process_encrypt_stream(self, input_path, output_path, encryptor, chunk_size, total_size, visualizer=None):
+        padder = padding.PKCS7(128).padder()
+        processed = 0
+        last_vis_time = 0
+        
+        with open(input_path, 'rb') as f_in, open(output_path, 'ab') as f_out:
+            while True:
+                chunk = f_in.read(chunk_size)
+                if len(chunk) == 0:
+                    padded = padder.finalize()
+                    encrypted = encryptor.update(padded) + encryptor.finalize()
+                    f_out.write(encrypted)
+                    break
+                
+                padded_chunk = padder.update(chunk)
+                encrypted_chunk = encryptor.update(padded_chunk)
+                f_out.write(encrypted_chunk)
+                
+                processed += len(chunk)
+                
+                cur_time = time.time()
+                # Throttled visualization
+                if visualizer and (cur_time - last_vis_time > 1.0) and processed < chunk_size * 2: 
+                     # Show early chunks preferred
+                     if len(chunk) >= 16:
+                        visualizer.visualize_block(chunk[:16])
+                        last_vis_time = cur_time
+                
+                self.visual_data_queue.put(encrypted_chunk)
+                self.progress_queue.put((processed / total_size) * 100)
+
+    def _process_decrypt_stream(self, input_path, output_path, decryptor, chunk_size, total_size, start_offset, visualizer=None):
+        unpadder = padding.PKCS7(128).unpadder()
+        processed = 0
+        real_total = total_size - start_offset
+        last_vis_time = 0
+        
+        with open(input_path, 'rb') as f_in, open(output_path, 'wb') as f_out:
+            f_in.seek(start_offset)
+            while True:
+                chunk = f_in.read(chunk_size)
+                if len(chunk) == 0:
+                    final_data = decryptor.finalize()
+                    unpadded = unpadder.update(final_data) + unpadder.finalize()
+                    f_out.write(unpadded)
+                    break
+                
+                decrypted_chunk = decryptor.update(chunk)
+                try:
+                    unpadded_chunk = unpadder.update(decrypted_chunk)
+                    f_out.write(unpadded_chunk)
+                except ValueError:
+                    pass
+                
+                processed += len(chunk)
+                
+                cur_time = time.time()
+                if visualizer and (cur_time - last_vis_time > 1.0) and processed < chunk_size * 2: 
+                     if len(chunk) >= 16:
+                        visualizer.visualize_decrypt_block(chunk[:16])
+                        last_vis_time = cur_time
+
+                self.visual_data_queue.put(decrypted_chunk)
+                self.progress_queue.put((processed / real_total) * 100)
+
+    def _toggle_controls(self, state):
+        s = "normal" if state else "disabled"
+        self.btn_encrypt.configure(state=s)
+        self.btn_decrypt.configure(state=s)
+
+def main():
+    app = ModernEncryptorApp()
+    app.mainloop()
+
+if __name__ == "__main__":
+    main()

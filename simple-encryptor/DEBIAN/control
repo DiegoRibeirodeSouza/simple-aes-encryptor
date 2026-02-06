@@ -1,0 +1,18 @@
+Package: simple-aes-encryptor
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.9), python3-tk, python3-cryptography
+Maintainer: Diego <diego@localhost>
+Description: Simple AES-256 File Encryptor
+ Uma aplicação GUI simples para criptografar e descriptografar arquivos
+ usando AES-256-CBC. Inclui um terminal visual que mostra o processo
+ de criptografia em tempo real.
+ .
+ Características:
+  - Criptografia AES-256-CBC
+  - Interface gráfica intuitiva com Tkinter
+  - Monitor de criptografia em tempo real (estilo terminal)
+  - Derivação de chave PBKDF2 com 100,000 iterações
+  - Suporte para qualquer tipo de arquivo

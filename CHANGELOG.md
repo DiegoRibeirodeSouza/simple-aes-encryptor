@@ -1,0 +1,57 @@
+# Changelog
+
+Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
+
+O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
+e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
+
+## [3.9] - 2026-02-06
+### Adicionado
+- 🔐 **Descriptografia Visível ("Deep Vision")**: Implementação completa da matemática inversa do AES (InvSubBytes, InvShiftRows, InvMixColumns) no visualizador.
+- 🎨 **Interface Moderna**: Migração completa para `CustomTkinter` (Material Design Dark).
+- 🛡️ **Ícone Profissional**: Novo ícone "Gold Lock" de alta definição.
+- � **Barra de Progresso Real**: Visualização precisa do progresso de criptografia/descriptografia.
+- � **Seletor Nativo**: Uso de `zenity/kdialog` para seleção de arquivos mais amigável.
+
+### Corrigido
+- 🐛 Correção no `startup-notification` que causava cursor girando infinitamente.
+- 🐛 Correção na assinatura da função de descriptografia que impedia a visualização.
+- ⚡ Otimização do visualizador para não gargalar a criptografia (throttling inteligente).
+
+## [2.0] - 2026-02-06
+### Adicionado
+- �️ **Deep Vision**: Modo de inspeção detalhada dos rounds do AES.
+- � Medidor de Força de Senha em tempo real.
+
+## [1.0.0] - 2026-02-06
+### Adicionado
+- ✨ Interface gráfica básica (Tkinter clássico)
+- � Criptografia AES-256-CBC
+- 🔑 Derivação de chave PBKDF2
+- 📦 Pacote Debian (.deb)
+
+---
+
+## [Unreleased]
+
+### Planejado
+- [ ] Suporte a drag and drop
+- [ ] Criptografia de múltiplos arquivos (batch)
+- [ ] Compressão antes de criptografar
+- [ ] Progress bar gráfica
+- [ ] Temas de cores (claro/escuro)
+- [ ] Internacionalização (i18n)
+- [ ] HMAC para autenticação (ou migrar para AES-GCM)
+- [ ] Verificador de força de senha
+- [ ] Histórico de operações
+
+---
+
+## Legenda
+
+- **Adicionado**: para novas funcionalidades
+- **Modificado**: para mudanças em funcionalidades existentes
+- **Descontinuado**: para funcionalidades que serão removidas
+- **Removido**: para funcionalidades removidas
+- **Corrigido**: para correção de bugs
+- **Segurança**: em caso de vulnerabilidades

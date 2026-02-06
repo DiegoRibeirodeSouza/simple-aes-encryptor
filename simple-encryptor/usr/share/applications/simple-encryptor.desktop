@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Simple AES Encryptor
+GenericName=File Encryption Tool
+Comment=Criptografe e descriptografe arquivos usando AES-256
+Exec=simple-encryptor
+Icon=simple-encryptor
+Terminal=false
+Categories=Utility;Security;
+Keywords=encryption;criptografia;aes;security;segurança;
+StartupNotify=false
