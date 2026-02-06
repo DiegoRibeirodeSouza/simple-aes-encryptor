@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Icon](docs/images/icon.png)
+
 
 **Aplicativo GUI simples para criptografia de arquivos usando AES-256**
 
