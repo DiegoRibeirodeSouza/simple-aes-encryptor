@@ -163,17 +163,35 @@ The visual terminal shows in real-time:
 ![Real-time Encryption Monitor](docs/images/encryption_monitor.png)
 
 ```
-======================================================================
-STARTING ENCRYPTION AES-256-CBC
-======================================================================
-→ Generating salt: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-→ Generating IV:   f1e2d3c4b5a69788990a1b2c3d4e5f6
-→ Deriving key PBKDF2 (100,000 iterations)...
-→ Derived Key: 1234567890abcdef1234567890abcdef1234567890abcdef...
+STARTING ENCRYPTION (GCM)...
 
-→ ENCRYPTING DATA...
-  [ 10.0%] Chunk   1/ 10: a1b2c3d4e5f6789012345678901234567890abcdef...
-  [ 20.0%] Chunk   2/ 10: f6e7d8c9b0a1928374650fabcdef0123456789ab...
+--- GCM PARAMETERS (SERPENT) ---
+Salt (16 bytes): 9984ffffa738fff731c9587799464a4b
+IV (12 bytes):   41a895ade8bff047dc09f9de
+Derived Key:     f163bc992a643ec032ca17d85859c4d6fea4b870db2246afa7958fc87085524c (DO NOT SHARE)
+----------------------
+
+[SERPENT GCM VISUALIZATION]
+GCM Counter Block: 41 a8 95 ad e8 bf f0 47 dc 09 f9 de 00 00 00 02
+-> Serpent Encrypting Counter (32 Rounds)...
+Round 0..7:   Mixing with S-Boxes S0..S7...
+Round 8..15:  Linear Transformation...
+Round 16..23: Advanced Diffusion...
+Round 24..31: Final Permutation...
+-> Tracing Serpent Encryption (32 Rounds)...
+Input Words: ['0xad95a841', '0x47f0bfe8', '0xdef909dc', '0x2000000']
+Round 00 | KeyMix+SBox[0]: ['0x87e073c0', '0x2df0bbc1', '0x88665f82', '0xb17e29b7']
+...
+Final Output: ['0x1013210a', '0x1d7198a9', '0x1300b0a', '0x859d7087']
+Keystream Generated: 5d d7 e0 85 fb 8f 38 75 38 ea 4e a7 02 99 8a 75
+Plaintext:     7f 45 4c 46 02 01 01 00 41 49 02 00 00 00 00 00
+XOR Operation ( Plaintext ^ Keystream )
+Ciphertext:    22 92 ac c3 f9 8e 39 75 79 a3 4c a7 02 99 8a 75
+
+Authentication Tag (MAC): 8af1e56ceed1e32e7b15ef26816cf4aa
+GCM OPERATION COMPLETED in 1.01s
+Integrity Verified Successfully.
+Output: file.encrypted
 ```
 
 ## 🛡️ Security
