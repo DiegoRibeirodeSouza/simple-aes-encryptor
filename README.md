@@ -61,9 +61,21 @@ python3 simple-encryptor/usr/bin/simple-encryptor
 
 ### Launch the Application
 
-**Via Terminal:**
+**Via Terminal (GUI):**
 ```bash
 simple-encryptor
+```
+
+**Via Terminal (CLI Mode):**
+```bash
+# Encrypt (AES Default)
+simple-encryptor-cli -e my_file.txt -p my_password
+
+# Encrypt (Serpent)
+simple-encryptor-cli -e my_file.txt -p my_password --algo SERPENT
+
+# Decrypt
+simple-encryptor-cli -d my_file.txt.encrypted -p my_password
 ```
 
 **Via Menu:** Search for "Simple AES Encryptor" in your applications menu (Utilities → Security)

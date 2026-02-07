@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+import secrets
+import hashlib
+import time
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import pyserpent
+
+def derive_key(password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    return kdf.derive(password.encode())
+
+# --- Serpent Helper Classes (Mirrored from GUI) ---
+class SerpentCTRHMACEncryptor:
+    def __init__(self, key, iv):
+        self.cipher = pyserpent.SerpentCipher(key)
+        self.iv = iv
+        
+        hk = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        hk.update(key)
+        self.hmac_key = hk.finalize()
+        self.mac = hmac.HMAC(self.hmac_key, hashes.SHA256())
+        
+        self.nonce = iv
+        self.ctr_val = 2
+
+    def update(self, data):
+        # 1. Encrypt (CTR via libgcrypt fast path)
+        encrypted_chunk, new_ctr = self.cipher.encrypt_ctr(self.nonce, self.ctr_val, data)
+        self.ctr_val = new_ctr
+        
+        # 2. MAC (Encrypt-then-MAC on ciphertext)
+        self.mac.update(encrypted_chunk)
+        return encrypted_chunk
+
+    def finalize(self):
+        return b""
+
+    @property
+    def tag(self):
+        return self.mac.finalize()[:16]
+
+class SerpentCTRHMACDecryptor:
+    def __init__(self, key, iv, expected_tag):
+        self.cipher = pyserpent.SerpentCipher(key)
+        self.iv = iv
+        self.expected_tag = expected_tag
+        
+        hk = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        hk.update(key)
+        self.hmac_key = hk.finalize()
+        self.mac = hmac.HMAC(self.hmac_key, hashes.SHA256())
+        
+        self.nonce = iv
+        self.ctr_val = 2
+
+    def update(self, data):
+        # 1. Update MAC
+        self.mac.update(data)
+        
+        # 2. Decrypt (CTR is symmetric)
+        decrypted_chunk, new_ctr = self.cipher.encrypt_ctr(self.nonce, self.ctr_val, data)
+        self.ctr_val = new_ctr
+        return decrypted_chunk
+
+    def finalize(self):
+        return b""
+        
+    def check_tag(self):
+        # Manual check for truncated 16-byte tag
+        calculated = self.mac.finalize()[:16]
+        if not secrets.compare_digest(calculated, self.expected_tag):
+            raise ValueError("Integrity Check Failed! (MAC Mismatch)")
+
+def encrypt_file(input_path, password, algo="AES"):
+    if not os.path.exists(input_path):
+        print(f"Error: File not found: {input_path}")
+        return
+
+    print(f"--- STARTING ENCRYPTION ({algo}) ---")
+    
+    salt_length = 16
+    iv_length = 12
+    chunk_size = 64 * 1024
+    
+    salt = secrets.token_bytes(salt_length)
+    iv = secrets.token_bytes(iv_length)
+    
+    print(f"Salt: {salt.hex()}")
+    print(f"IV:   {iv.hex()}")
+    
+    key = derive_key(password, salt)
+    
+    output_path = input_path + ".encrypted"
+    
+    encryptor = None
+    if algo == "AES":
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+    elif algo == "SERPENT":
+        encryptor = SerpentCTRHMACEncryptor(key, iv)
+        
+    file_size = os.path.getsize(input_path)
+    processed = 0
+    
+    with open(output_path, 'wb') as f_out:
+        # Header
+        magic = b'\x01' if algo == "AES" else b'\x02'
+        f_out.write(magic)
+        f_out.write(salt)
+        f_out.write(iv)
+        
+        with open(input_path, 'rb') as f_in:
+            while True:
+                chunk = f_in.read(chunk_size)
+                if not chunk: break
+                
+                ct_chunk = encryptor.update(chunk)
+                f_out.write(ct_chunk)
+                
+                processed += len(chunk)
+                progress = (processed / file_size) * 100
+                sys.stdout.write(f"\rProgress: {progress:.1f}%")
+                sys.stdout.flush()
+                
+        f_out.write(encryptor.finalize())
+        f_out.write(encryptor.tag)
+        
+    print(f"\n[SUCCESS] Encrypted to: {output_path}")
+
+def decrypt_file(input_path, password):
+    if not os.path.exists(input_path):
+        print(f"Error: File not found: {input_path}")
+        return
+
+    print(f"--- STARTING DECRYPTION ---")
+    
+    salt_length = 16
+    iv_length = 12
+    tag_length = 16
+    chunk_size = 64 * 1024
+    
+    file_size = os.path.getsize(input_path)
+    
+    with open(input_path, 'rb') as f_in:
+        # Read Header
+        magic = f_in.read(1)
+        if magic == b'\x01': algo = "AES"
+        elif magic == b'\x02': algo = "SERPENT"
+        else:
+             # Legacy fallback assumption
+             f_in.seek(0)
+             algo = "AES"
+        
+        print(f"Algorithm Detected: {algo}")
+        
+        salt = f_in.read(salt_length)
+        iv = f_in.read(iv_length)
+        
+        # Read Tag from end
+        f_in.seek(-tag_length, 2)
+        tag = f_in.read(tag_length)
+        
+        # Payload size
+        payload_end = f_in.tell()
+        payload_start = f_in.tell() # wait, we jumped to end
+        # Reset to start of payload
+        header_size = (1 if magic else 0) + salt_length + iv_length
+        f_in.seek(header_size)
+        payload_size = file_size - header_size - tag_length
+        
+        key = derive_key(password, salt)
+        
+        decryptor = None
+        if algo == "AES":
+            cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+            decryptor = cipher.decryptor()
+        elif algo == "SERPENT":
+            decryptor = SerpentCTRHMACDecryptor(key, iv, tag)
+            
+        output_path = os.path.splitext(input_path)[0]
+        if output_path == input_path: output_path += ".decrypted"
+        
+        processed = 0
+        with open(output_path, 'wb') as f_out:
+            # Read payload in chunks
+            # Loop based on payload size to avoid reading tag as data
+            remaining = payload_size
+            
+            while remaining > 0:
+                read_size = min(chunk_size, remaining)
+                chunk = f_in.read(read_size)
+                if not chunk: break
+                
+                pt_chunk = decryptor.update(chunk)
+                f_out.write(pt_chunk)
+                
+                remaining -= len(chunk)
+                processed += len(chunk)
+                progress = (processed / payload_size) * 100
+                sys.stdout.write(f"\rProgress: {progress:.1f}%")
+                sys.stdout.flush()
+                
+            f_out.write(decryptor.finalize())
+            
+            # Verify Integrity
+            if algo == "SERPENT":
+                decryptor.check_tag()
+                
+    print(f"\n[SUCCESS] Decrypted to: {output_path}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Simple Encryptor CLI")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-e", "--encrypt", action="store_true", help="Encrypt mode")
+    group.add_argument("-d", "--decrypt", action="store_true", help="Decrypt mode")
+    
+    parser.add_argument("file", help="Input file path")
+    parser.add_argument("-p", "--password", required=True, help="Password")
+    parser.add_argument("--algo", choices=["AES", "SERPENT"], default="AES", help="Algorithm (for encryption)")
+    
+    args = parser.parse_args()
+    
+    try:
+        if args.encrypt:
+            encrypt_file(args.file, args.password, args.algo)
+        elif args.decrypt:
+            decrypt_file(args.file, args.password)
+    except Exception as e:
+        print(f"\n[ERROR] Operation failed: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

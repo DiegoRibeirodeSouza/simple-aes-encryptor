@@ -5,6 +5,13 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.11.0] - 2026-02-07
+### Adicionado
+- 💻 **CLI Mode**: Nova ferramenta de linha de comando `simple-encryptor-cli` incluída no pacote.
+    - Suporte completo a criptografia/descriptografia via terminal.
+    - Compatível com scripts e automação.
+    - Uso: `simple-encryptor-cli -e arquivo -p senha --algo SERPENT`
+
 ## [3.10.0] - 2026-02-07
 ### Otimizações
 - 🚀 **Performance Extrema**: Substituída a implementação Python pura do Serpent CTR por chamadas diretas à `libgcrypt` do sistema.
