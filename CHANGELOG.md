@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0] - 2026-02-07
+### Added
+- 📦 **Single Archive Encryption**: When selecting multiple files/folders, they are now automatically bundled into a **single encrypted archive** (`Encrypted_Archive_TIMESTAMP.tar.encrypted`).
+    - Simplifies sharing: Send just one file instead of many.
+    - Preserves file structure inside the encrypted package.
+- 🛠️ **UX Improvement**: Removed the previous behavior of encrypting each file individually in batch mode.
+
 ## [3.14.0] - 2026-02-07
 ### Added
 - 📂 **Folder Support**: Fully implemented folder encryption. Folders are automatically archived (`.tar`) and encrypted.
