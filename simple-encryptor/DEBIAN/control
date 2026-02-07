@@ -1,13 +1,16 @@
 Package: simple-aes-encryptor
-Version: 1.0.0
+Version: 4.0.0
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3 (>= 3.9), python3-tk, python3-cryptography
+Depends: python3 (>= 3.9), python3-tk, python3-cryptography, zenity
 Maintainer: Diego <diego@localhost>
-Description: Simple AES-256 File Encryptor
- Uma aplicação GUI simples para criptografar e descriptografar arquivos
- usando AES-256-CBC. Inclui um terminal visual que mostra o processo
+Description: High Performance AES-GCM Encryptor
+ Uma aplicação GUI moderna para criptografar (AES-GCM) arquivos
+ e pastas com segurança total e alta performance.
+ .
+ Características:
+  - Criptografia Autenticada AES-256-GCM (Mais rápido e seguro)
  de criptografia em tempo real.
  .
  Características:

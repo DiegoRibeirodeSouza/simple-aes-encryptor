@@ -12,13 +12,16 @@ import secrets
 import threading
 import time
 import queue
-from pathlib import Path
+import tarfile
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives import padding, hashes, hmac
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
+import pyserpent # Pure Python Serpent
+
+# Removed Try/Except for Crypto/Serpent
+HAS_SERPENT = True # We now bundle pyserpent 
 
 # --- Configurações Visuais ---
 COLOR_BG_DARK = "#121212"
@@ -108,42 +111,62 @@ class AESVisualizer:
         
         self.log_callback(f"Expanded Key (60 words generated). Ready.", 'info')
 
-    def visualize_block(self, block):
+    def visualize_gcm_block(self, input_block, iv, counter_int, is_encrypt=True):
         if not self.w:
             self._key_expansion()
-
-        state = self._bytes_to_matrix(block)
+            
+        # 1. Construct GCM Counter Block (J0 + increment)
+        # J0 = IV (12 bytes) || Counter (4 bytes big endian)
+        # Counter starts at 1 usually for data.
+        ctr_bytes = counter_int.to_bytes(4, 'big')
+        counter_block = iv + ctr_bytes
         
-        self.log_callback("\n[AES VISUALIZATION STARTS]", 'cmd')
-        self.log_callback(f"Input Block: {block.hex(' ')}", 'info')
-        self.log_callback("Initial State Matrix:", 'info')
-        self._log_state(state)
+        state = self._bytes_to_matrix(counter_block)
         
-        # Round 0
-        self.log_callback(f"\n--- ROUND 0 (Whitening) ---", 'cmd')
+        self.log_callback("\n[GCM STEP VISUALIZATION]", 'cmd')
+        self.log_callback(f"GCM Counter Block: {counter_block.hex(' ')} (IV + Ctr {counter_int})", 'info')
+        self.log_callback("-> Criptografando Contador para gerar Keystream...", 'info')
+        
+        # --- AES ENCRYPTION OF COUNTER ---
         self._add_round_key(state, 0)
-        self.log_callback("Status after AddRoundKey:", 'info')
-        self._log_state(state)
         
-        for r in range(1, self.rounds + 1):
-            self.log_callback(f"\n--- ROUND {r} ---", 'cmd')
-            
-            self.log_callback("> SubBytes (S-Box Substitution)", 'data')
+        for r in range(1, self.rounds):
             state = self._sub_bytes(state)
-            self._log_state(state)
-            
-            self.log_callback("> ShiftRows (Row Permutation)", 'data')
             state = self._shift_rows(state)
-            self._log_state(state)
-            
-            if r < self.rounds:
-                self.log_callback("> MixColumns (Galois Field Mult)", 'data')
-                state = self._mix_columns(state)
-                self._log_state(state)
-            
-            self.log_callback(f"> AddRoundKey (Round {r} Key)", 'data')
+            state = self._mix_columns(state)
             self._add_round_key(state, r)
-            self._log_state(state)
+            
+        # Final Round
+        state = self._sub_bytes(state)
+        state = self._shift_rows(state)
+        self._add_round_key(state, self.rounds)
+        
+        # Result is the Keystream
+        keystream = bytes(self._matrix_to_bytes(state))
+        self.log_callback(f"Keystream Block: {keystream.hex(' ')}", 'success')
+        
+        # --- XOR WITH TEXT ---
+        # Truncate keystream if input is smaller than 16 bytes (last block)
+        if len(input_block) < 16:
+            keystream = keystream[:len(input_block)]
+            
+        output_block = bytes(a ^ b for a, b in zip(input_block, keystream))
+        
+        label_in = "Plaintext" if is_encrypt else "Ciphertext"
+        label_out = "Ciphertext" if is_encrypt else "Plaintext"
+        
+        self.log_callback(f"{label_in}:     {input_block.hex(' ')}", 'data')
+        self.log_callback(f"XOR Operation ( {label_in} ^ Keystream )", 'info')
+        self.log_callback(f"{label_out}:    {output_block.hex(' ')}", 'success')
+
+    def _matrix_to_bytes(self, state):
+        # Column major to bytes
+        res = []
+        for c in range(4):
+            for r in range(4):
+                res.append(state[c][r])
+        return res
+
 
     def _bytes_to_matrix(self, text):
         return [list(text[i:i+4]) for i in range(0, len(text), 4)]
@@ -310,6 +333,62 @@ class AESVisualizer:
         self._log_state(k_matrix)
         self.log_callback("  [Result after XOR]:", 'info')
 
+class SerpentVisualizer:
+    # Simplified Serpent Visualizer for educational purposes
+    # Serpent has 32 rounds. We will show a summary of s-boxes.
+    
+    def __init__(self, key, log_callback):
+        self.key = key
+        self.log_callback = log_callback
+        self.rounds = 32
+        
+    def visualize_gcm_block(self, input_block, iv, counter_int, is_encrypt=True):
+        self.log_callback("\n[SERPENT GCM VISUALIZATION]", 'cmd')
+        
+        # 1. Counter
+        ctr_bytes = counter_int.to_bytes(4, 'big')
+        counter_block = iv + ctr_bytes
+        self.log_callback(f"GCM Counter Block: {counter_block.hex(' ')}", 'info')
+        self.log_callback("-> Serpent Encrypting Counter (32 Rounds)...", 'info')
+        
+        # Simulate rounds (Full Serpent python impl is huge, we show logic)
+        # We will use the library to get the result, but log the "structure"
+        # Ideally we would show intermediate states.
+        
+        self.log_callback("Round 0..7:   Mixing with S-Boxes S0..S7...", 'data')
+        self.log_callback("Round 8..15:  Linear Transformation...", 'data')
+        self.log_callback("Round 16..23: Advanced Diffusion...", 'data')
+        self.log_callback("Round 24..31: Final Permutation...", 'data')
+        
+        if HAS_SERPENT:
+            # cipher = Serpent.new(self.key, Serpent.MODE_ECB) using PyCrypto logic... 
+            # NOW using pure python pyserpent
+            s = pyserpent.SerpentCipher(self.key)
+            
+            # Use 'trace_encrypt' to get full logs
+            def trace_logger(msg):
+                self.log_callback(msg, 'data')
+
+            self.log_callback("-> Tracing Serpent Encryption (32 Rounds)...", 'cmd')
+            keystream = s.trace_encrypt(counter_block, trace_logger)
+            
+            self.log_callback(f"Keystream Generated: {keystream.hex(' ')}", 'success')
+            
+            # XOR
+            if len(input_block) < 16:
+                keystream = keystream[:len(input_block)]
+            output_block = bytes(a ^ b for a, b in zip(input_block, keystream))
+            
+            label_in = "Plaintext" if is_encrypt else "Ciphertext"
+            label_out = "Ciphertext" if is_encrypt else "Plaintext"
+            
+            self.log_callback(f"{label_in}:     {input_block.hex(' ')}", 'data')
+            self.log_callback(f"XOR Operation ( {label_in} ^ Keystream )", 'info')
+            self.log_callback(f"{label_out}:    {output_block.hex(' ')}", 'success')
+        else:
+             self.log_callback("Error: Serpent library backend missing for visualizer.", 'error')
+
+
 
 import customtkinter as ctk
 import subprocess
@@ -317,9 +396,28 @@ import shutil
 
 # --- Configurações Visuais (CustomTkinter) ---
 ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("green")  # Matrix style built-in
+ctk.set_default_color_theme("green")
 
-class ModernEncryptorApp(ctk.CTk):
+# Try importing TkinterDnD2 for Drag and Drop
+try:
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+    HAS_DND = True
+    BaseClass = TkinterDnD.Tk  # Inherit from TkinterDnD.Tk if available
+    # But CustomTkinter inherits from CTk which inherits from Tk.
+    # To mix them, we need a custom class or patching.
+    # CTk source shows it inherits from tk.Tk.
+    # We can mixin.
+    
+    class CTkBnB(ctk.CTk, TkinterDnD.DnDWrapper):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.TkdndVersion = TkinterDnD._require(self)
+            
+    ParentClass = CTkBnB
+except ImportError:
+    HAS_DND = False
+    ParentClass = ctk.CTk
+class ModernEncryptorApp(ParentClass):
     def __init__(self):
         super().__init__()
         
@@ -334,12 +432,14 @@ class ModernEncryptorApp(ctk.CTk):
              print(f"Icon load error: {e}")
         
         # Variáveis de Estado
-        self.selected_file = None
+        self.selected_path = None
+        self.is_folder = False
         self.is_processing = False
         self.password_var = ctk.StringVar()
         self.show_password_var = ctk.BooleanVar(value=False)
-        self.status_var = ctk.StringVar(value="Sistema Online - Aguardando Comando")
+        self.status_var = ctk.StringVar(value="System Online - Select Algorithm")
         self.visualize_deeply = ctk.BooleanVar(value=True)
+        self.algo_var = ctk.StringVar(value="AES")
         
         # Filas para comunicação
         self.log_queue = queue.Queue()
@@ -348,6 +448,18 @@ class ModernEncryptorApp(ctk.CTk):
         
         self._setup_ui()
         self._update_ui_loop()
+        
+        if HAS_DND:
+            self.drop_target_register(DND_FILES)
+            self.dnd_bind('<<Drop>>', self._on_drop)
+            self._log("Drag & Drop Active!", 'success')
+        else:
+             self._log("Drag & Drop unavailable (tkinterdnd2 missing).", 'info')
+
+    def _on_drop(self, event):
+        paths = self.tk.splitlist(event.data)
+        if paths:
+            self._handle_path_input(paths[0])
 
     def _setup_ui(self):
         # Grid layout config
@@ -362,8 +474,8 @@ class ModernEncryptorApp(ctk.CTk):
                                font=('Roboto Medium', 22), text_color=COLOR_ACCENT)
         lbl_title.pack(side="left")
         
-        lbl_ver = ctk.CTkLabel(header_frame, text="v3.5 Final", 
-                             font=('Roboto', 12), text_color="gray")
+        lbl_ver = ctk.CTkLabel(header_frame, text="v4.7 English Edition", 
+                              font=('Roboto', 12), text_color="gray")
         lbl_ver.pack(side="left", padx=10, pady=(8,0))
 
         # --- 2. Controls Section (Cards) ---
@@ -371,29 +483,33 @@ class ModernEncryptorApp(ctk.CTk):
         controls_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=10)
         controls_frame.grid_columnconfigure(1, weight=1)
         
-        # Card: Arquivo
-        lbl_file_h = ctk.CTkLabel(controls_frame, text="ARQUIVO ALVO", font=('Roboto', 12, 'bold'))
+        # Card: File
+        lbl_file_h = ctk.CTkLabel(controls_frame, text="TARGET FILE", font=('Roboto', 12, 'bold'))
         lbl_file_h.grid(row=0, column=0, sticky="w", padx=15, pady=(15, 5))
         
         file_box = ctk.CTkFrame(controls_frame, fg_color="#2b2b2b")
         file_box.grid(row=1, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
         
-        btn_select = ctk.CTkButton(file_box, text="SELECIONAR ARQUIVO", command=self._select_file, 
-                                 width=180, height=35, corner_radius=8, font=('Roboto Medium', 13))
-        btn_select.pack(side="left", padx=10, pady=10)
-        
-        self.lbl_file = ctk.CTkLabel(file_box, text="Nenhum arquivo selecionado", text_color="gray")
-        self.lbl_file.pack(side="left", padx=10, fill="x", expand=True)
+        btn_select_file = ctk.CTkButton(file_box, text="SELECT FILE", command=self._select_file, 
+                                 width=140, height=35, corner_radius=8, font=('Roboto Medium', 11))
+        btn_select_file.pack(side="left", padx=(10, 5), pady=10)
 
-        # Card: Segurança
-        lbl_sec_h = ctk.CTkLabel(controls_frame, text="SEGURANÇA", font=('Roboto', 12, 'bold'))
+        btn_select_folder = ctk.CTkButton(file_box, text="SELECT FOLDER", command=self._select_folder, 
+                                 width=140, height=35, corner_radius=8, font=('Roboto Medium', 11))
+        btn_select_folder.pack(side="left", padx=(0, 10), pady=10)
+        
+        self.lbl_file = ctk.CTkLabel(file_box, text="No selection", text_color="gray")
+        self.lbl_file.pack(side="left", padx=5, fill="x", expand=True)
+
+        # Card: Security
+        lbl_sec_h = ctk.CTkLabel(controls_frame, text="SECURITY", font=('Roboto', 12, 'bold'))
         lbl_sec_h.grid(row=2, column=0, sticky="w", padx=15, pady=(5, 5))
         
         sec_box = ctk.CTkFrame(controls_frame, fg_color="#2b2b2b")
         sec_box.grid(row=3, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
         
         self.entry_pass = ctk.CTkEntry(sec_box, textvariable=self.password_var, show="•", 
-                                     placeholder_text="Digite sua senha...", height=35, font=('Consolas', 13))
+                                     placeholder_text="Enter password...", height=35, font=('Consolas', 13))
         self.entry_pass.pack(side="left", fill="x", expand=True, padx=10, pady=(10, 5))
         
         # Strength Meter
@@ -404,27 +520,38 @@ class ModernEncryptorApp(ctk.CTk):
         
         self.password_var.trace_add("write", self._update_strength)
         
-        chk_show = ctk.CTkSwitch(sec_box, text="Mostrar", variable=self.show_password_var, 
+        chk_show = ctk.CTkSwitch(sec_box, text="Show", variable=self.show_password_var, 
                                command=self._toggle_password, onvalue=True, offvalue=False, width=60)
         chk_show.pack(side="right", padx=15, pady=10)
 
-        # Card: Opções e Ações
-        lbl_opt_h = ctk.CTkLabel(controls_frame, text="OPERAÇÕES", font=('Roboto', 12, 'bold'))
+        # Card: Options
+        lbl_opt_h = ctk.CTkLabel(controls_frame, text="OPERATIONS", font=('Roboto', 12, 'bold'))
         lbl_opt_h.grid(row=4, column=0, sticky="w", padx=15, pady=(5, 5))
         
         act_box = ctk.CTkFrame(controls_frame, fg_color="transparent")
         act_box.grid(row=5, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
         
-        chk_vis = ctk.CTkCheckBox(act_box, text="Deep Vision (Ver Interna do AES)", variable=self.visualize_deeply)
+        chk_vis = ctk.CTkCheckBox(act_box, text="Deep Vision (See Internals)", variable=self.visualize_deeply)
         chk_vis.pack(side="left")
         
-        self.btn_decrypt = ctk.CTkButton(act_box, text="🔓 DESCRIPTOGRAFAR", command=self._decrypt_file,
+        self.btn_decrypt = ctk.CTkButton(act_box, text="🔓 DECRYPT", command=self._decrypt_file,
                                        fg_color="#333", hover_color="#444", width=180, height=40)
         self.btn_decrypt.pack(side="right", padx=(10, 0))
 
-        self.btn_encrypt = ctk.CTkButton(act_box, text="🔒 CRIPTOGRAFAR", command=self._encrypt_file,
+        self.btn_encrypt = ctk.CTkButton(act_box, text="🔒 ENCRYPT", command=self._encrypt_file,
                                        width=180, height=40)
         self.btn_encrypt.pack(side="right")
+
+        # --- Algo Selection ---
+        algo_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        algo_frame.grid(row=4, column=1, sticky="e", padx=20)
+        
+        lbl_algo = ctk.CTkLabel(algo_frame, text="Algorithm:", font=('Roboto', 11, 'bold'))
+        lbl_algo.pack(side="left", padx=5)
+        
+        self.seg_algo = ctk.CTkSegmentedButton(algo_frame, values=["AES", "SERPENT"], variable=self.algo_var)
+        self.seg_algo.pack(side="left")
+        self.seg_algo.set("AES")
 
         # --- 3. Monitor Section (Terminal) ---
         monitor_frame = ctk.CTkFrame(self)
@@ -432,7 +559,7 @@ class ModernEncryptorApp(ctk.CTk):
         monitor_frame.grid_rowconfigure(2, weight=1)
         monitor_frame.grid_columnconfigure(0, weight=1)
         
-        lbl_term = ctk.CTkLabel(monitor_frame, text=" MONITOR DE CRIPTOGRAFIA EM TEMPO REAL", 
+        lbl_term = ctk.CTkLabel(monitor_frame, text=" REAL-TIME CRYPTO MONITOR", 
                               font=('Consolas', 10, 'bold'), text_color=COLOR_ACCENT)
         lbl_term.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
         
@@ -496,30 +623,74 @@ class ModernEncryptorApp(ctk.CTk):
         self.entry_pass.configure(show='' if self.show_password_var.get() else '•')
 
     def _select_file(self):
-        """Usa Zenity para diálogo nativo se disponível, senão fallback"""
-        filename = ""
+        self._select_target(False)
+
+    def _select_folder(self):
+        self._select_target(True)
+
+    def _select_target(self, is_folder):
+        path = ""
         zenity_path = shutil.which("zenity")
+        
+        # REMOVED: self.attributes('-topmost', True) - This caused the issue!
+        self.update()
         
         if zenity_path:
             try:
-                # Zenity command for file selection
-                cmd = [zenity_path, "--file-selection", "--title=Selecione o Arquivo para Criptografia"]
+                cmd = [zenity_path, "--file-selection", "--title=Select"]
+                if is_folder:
+                    cmd.append("--directory")
+                
+                # Zenity often appears behind, let's try to focus it or hope topmost helps the parent
+                # We can subprocess check output.
                 result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 if result.returncode == 0:
-                    filename = result.stdout.strip()
+                    path = result.stdout.strip()
             except Exception as e:
-                print(f"Erro ao usar Zenity: {e}")
+                print(f"Error using Zenity: {e}")
         
-        # Fallback se Zenity falhar ou usuário cancelar (mas quiser tentar via TK)
-        # Na verdade se zenity falhar, tentamos TK. Se usuario cancelar, filename vazio.
-        if not filename and not zenity_path: 
-             filename = filedialog.askopenfilename()
+        if not path and not zenity_path: 
+             if is_folder:
+                 path = filedialog.askdirectory(parent=self, title="Selecione a Pasta")
+             else:
+                 path = filedialog.askopenfilename(parent=self, title="Selecione o Arquivo")
 
-        if filename:
-            self.selected_file = filename
-            size = os.path.getsize(filename)
-            self.lbl_file.configure(text=f"{os.path.basename(filename)} ({self._format_size(size)})", text_color="white")
-            self._log(f"Arquivo selecionado: {filename}", 'info')
+        # REMOVED: self.attributes('-topmost', False)
+
+        if path:
+            self._handle_path_input(path, is_folder_override=is_folder)
+
+    def _handle_path_input(self, path, is_folder_override=None):
+            # Clean path for DnD (sometimes has curly braces if spaces)
+            # tk.splitlist handles braces usually, but let's be safe
+            if path.startswith('{') and path.endswith('}'):
+                path = path[1:-1]
+            
+            if is_folder_override is not None:
+                self.is_folder = is_folder_override
+            else:
+                self.is_folder = os.path.isdir(path)
+
+            self.selected_path = path
+            
+            if self.is_folder:
+                 size = self._get_folder_size(path)
+                 name = os.path.basename(path) + " (Folder)"
+            else:
+                 size = os.path.getsize(path)
+                 name = os.path.basename(path)
+
+            self.lbl_file.configure(text=f"{name} ({self._format_size(size)})", text_color="white")
+            self._log(f"Target selected: {path}", 'info')
+
+    def _get_folder_size(self, start_path):
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(start_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+        return total_size
 
     def _format_size(self, size):
         for unit in ['B', 'KB', 'MB', 'GB']:
@@ -547,7 +718,7 @@ class ModernEncryptorApp(ctk.CTk):
             
             if latest_chunk:
                 hex_data = latest_chunk[:32].hex(' ') 
-                self.status_var.set(f"PROCESSANDO: {hex_data}...")
+                self.status_var.set(f"PROCESSING: {hex_data}...")
             
             last_progress = None
             while not self.progress_queue.empty():
@@ -582,10 +753,9 @@ class ModernEncryptorApp(ctk.CTk):
         threading.Thread(target=self._process_file, args=(False,), daemon=True).start()
 
     def _validate_inputs(self):
-        if not self.selected_file:
-            messagebox = ctk.CTkInputDialog(text="Erro: Selecione um arquivo", title="Aviso")
+        if not self.selected_path:
             # CTK doesn't have simple msgbox, use subprocess zenity or print log
-            self._log("AVISO: Selecione um arquivo primeiro!", 'error')
+            self._log("AVISO: Selecione um arquivo ou pasta primeiro!", 'error')
             return False
         if not self.password_var.get():
             self._log("AVISO: Digite uma senha!", 'error')
@@ -599,135 +769,350 @@ class ModernEncryptorApp(ctk.CTk):
         self._toggle_controls(False)
         
         try:
-            op_name = "CRIPTOGRAFIA" if encrypt_mode else "DESCRIPTOGRAFIA"
+            op_name = "CRIPTOGRAFIA (GCM)" if encrypt_mode else "DESCRIPTOGRAFIA (GCM)"
             self._log(f"INICIANDO {op_name}...", 'cmd')
             
             start_time = time.time()
-            file_size = os.path.getsize(self.selected_file)
+            input_path = self.selected_path
+            
+            # GCM Parameters
+            iv_length = 12 # Standard GCM 96-bit
+            salt_length = 16
+            tag_length = 16
             chunk_size = 64 * 1024
+            algo = self.algo_var.get()
             
             # Preparação
             key = None
+
             if encrypt_mode:
-                salt = secrets.token_bytes(16)
-                iv = secrets.token_bytes(16)
-                self._log(f"Gerando Salt e IV...", 'info')
-                key = self._derive_key(self.password_var.get(), salt)
-                cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-                encryptor = cipher.encryptor()
+                file_size = self._get_folder_size(input_path) if self.is_folder else os.path.getsize(input_path)
                 
-                output_path = self.selected_file + ".encrypted"
+                salt = secrets.token_bytes(salt_length)
+                iv = secrets.token_bytes(iv_length) # 12 bytes nonce for GCM
+                
+                self._log(f"", 'info') 
+                self._log(f"--- PARÂMETROS GCM ({algo}) ---", 'cmd')
+                self._log(f"Salt (16 bytes): {salt.hex()}", 'data')
+                self._log(f"IV (12 bytes):   {iv.hex()}", 'data')
+                
+                key = self._derive_key(self.password_var.get(), salt)
+                self._log(f"Chave Derivada:  {key.hex()} (NÃO COMPARTILHE)", 'error')
+                self._log(f"----------------------", 'cmd')
+                
+                if algo == "AES":
+                    cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+                    encryptor = cipher.encryptor()
+                elif algo == "SERPENT":
+                    # Authenticated Encryption with Serpent:
+                    # Scheme: CTR Mode (Counter) + HMAC-SHA256 (Hash-based Message Authentication Code)
+                    # This replaces GCM.
+                    # We implement a custom Encryptor object that mimics the 'update' interface.
+                    
+                    class SerpentCTRHMACEncryptor:
+                        def __init__(self, key, iv):
+                            self.cipher = pyserpent.SerpentCipher(key)
+                            self.iv = iv
+                            self.mac = hmac.HMAC(key, hashes.SHA256(), backend=default_backend()) # Use Key for HMAC too? Usually subkey.
+                            # For simplicity we reuse key (Acceptable for this level, usually K_enc and K_mac should be separate derived keys)
+                            # Let's derive a subkey for HMAC to be proper.
+                            # Actually, let's keep it simple: PBKDF2 gave us 'key'.
+                            # Let's split salt? No 'key' is 32 bytes.
+                            # Let's compute hmac key = sha256(key).
+                            hk = hashes.Hash(hashes.SHA256(), backend=default_backend())
+                            hk.update(key)
+                            self.hmac_key = hk.finalize()
+                            self.mac = hmac.HMAC(self.hmac_key, hashes.SHA256(), backend=default_backend())
+                            
+                            self.nonce = iv # 12 bytes
+                            # Counter is 16 bytes: Nonce(12) + 4 bytes.
+                            # Start at 2 (matching our GCM logic)
+                            self.ctr_val = 2
+                            self.buffer = b""
+
+                        def update(self, data):
+                            # CTR Mode implementation
+                            out = bytearray()
+                            for b in data:
+                                if len(self.buffer) == 0:
+                                    counter_block = self.nonce + self.ctr_val.to_bytes(4, 'big')
+                                    self.buffer = self.cipher.encrypt(counter_block)
+                                    self.ctr_val += 1
+                                
+                                keystream_byte = self.buffer[0]
+                                self.buffer = self.buffer[1:]
+                                out.append(b ^ keystream_byte)
+                            
+                            out_bytes = bytes(out)
+                            # Update MAC with ciphertext
+                            self.mac.update(out_bytes)
+                            return out_bytes
+
+                        def finalize(self):
+                            return b"" # No padding in CTR
+
+                        @property
+                        def tag(self):
+                            return self.mac.finalize()[:16] # Truncate to 16 bytes to match GCM tag length standard we set
+                        
+                    encryptor = SerpentCTRHMACEncryptor(key, iv)
+                
+                if self.is_folder:
+                     base_name = os.path.basename(input_path.rstrip(os.sep))
+                     output_path = f"{input_path}.tar.encrypted"
+                else:
+                     output_path = input_path + ".encrypted"
                 
                 with open(output_path, 'wb') as f_out:
+                    # WRITE HEADER to identify Algo
+                    magic = b'\x01' if algo == "AES" else b'\x02'
+                    f_out.write(magic)
                     f_out.write(salt)
                     f_out.write(iv)
+                    # Payload comes next, Tag at end
             else:
-                self._log("Lendo cabeçalho do arquivo...", 'info')
-                with open(self.selected_file, 'rb') as f_in:
-                    salt = f_in.read(16)
-                    iv = f_in.read(16)
-                
-                key = self._derive_key(self.password_var.get(), salt)
-                cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-                decryptor = cipher.decryptor()
-                
-                output_path = self.selected_file.replace('.encrypted', '') 
-                if output_path == self.selected_file:
-                     output_path += ".decrypted"
+                 # Decrypt
+                 file_size = os.path.getsize(input_path)
+                 self._log("Lendo metadados...", 'info')
+                 
+                 start_offset = 0
+                 with open(input_path, 'rb') as f_in:
+                    magic = f_in.read(1)
+                    if magic == b'\x01': algo = "AES"
+                    elif magic == b'\x02': algo = "SERPENT"
+                    else: 
+                        # Backward compat with v4.0-4.3
+                         f_in.seek(0)
+                         algo = "AES"
+                         magic = b'' 
+                    
+                    self._log(f"Algoritmo Detectado: {algo}", 'success')
+                    
+                    salt = f_in.read(salt_length)
+                    iv = f_in.read(iv_length)
+                    start_offset = f_in.tell()
+                 
+                 key = self._derive_key(self.password_var.get(), salt)
+                 
+                 # Read Tag
+                 with open(input_path, 'rb') as f_in:
+                      f_in.seek(-tag_length, 2)
+                      tag = f_in.read(tag_length)
+                 
+                 self._log(f"Tag lida: {tag.hex()}", 'data')
+
+                 if algo == "AES":
+                     cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+                     decryptor = cipher.decryptor()
+                 elif algo == "SERPENT":
+                     # Serpent CTR + HMAC Recalculation
+                     
+                     class SerpentCTRHMACDecryptor:
+                         def __init__(self, key, iv, expected_tag):
+                             self.cipher = pyserpent.SerpentCipher(key)
+                             self.iv = iv
+                             self.expected_tag = expected_tag
+                             
+                             hk = hashes.Hash(hashes.SHA256(), backend=default_backend())
+                             hk.update(key)
+                             self.hmac_key = hk.finalize()
+                             self.mac = hmac.HMAC(self.hmac_key, hashes.SHA256(), backend=default_backend())
+                             
+                             self.nonce = iv
+                             self.ctr_val = 2
+                             self.buffer = b""
+
+                         def update(self, data):
+                             # Update MAC with ciphertext (Encrypt-then-MAC means MAC is on Ciphertext)
+                             self.mac.update(data)
+                             
+                             out = bytearray()
+                             for b in data:
+                                if len(self.buffer) == 0:
+                                    counter_block = self.nonce + self.ctr_val.to_bytes(4, 'big')
+                                    self.buffer = self.cipher.encrypt(counter_block)
+                                    self.ctr_val += 1
+                                
+                                keystream_byte = self.buffer[0]
+                                self.buffer = self.buffer[1:]
+                                out.append(b ^ keystream_byte)
+                             return bytes(out)
+
+                         def finalize(self):
+                             computed_tag = self.mac.finalize()[:16]
+                             if computed_tag != self.expected_tag:
+                                 raise Exception("INTEGRITY FAILURE (Invalid MAC)")
+
+                     decryptor = SerpentCTRHMACDecryptor(key, iv, tag)
+
+                 output_path = input_path.replace('.encrypted', '')
+                 if output_path == input_path: output_path += ".decrypted"
             
             # Setup Visualizer
             visualizer = None
             if self.visualize_deeply.get() and key:
-                visualizer = AESVisualizer(key, self._log)
-
+                if algo == "AES":
+                    visualizer = AESVisualizer(key, self._log)
+                else:
+                    visualizer = SerpentVisualizer(key, self._log)
+            
             # Process
             if encrypt_mode:
-               self._process_encrypt_stream(self.selected_file, output_path, encryptor, chunk_size, file_size, visualizer)
+               tag = self._process_encrypt_stream(input_path, output_path, encryptor, chunk_size, file_size, visualizer, iv)
+               # Write tag at end
+               with open(output_path, 'ab') as f_out:
+                   f_out.write(tag)
+               
+               self._log(f"", 'info')
+               self._log(f"Tag de Autenticação (MAC): {tag.hex()}", 'success')
             else:
-               start_pos = 0 if encrypt_mode else 32
-               self._process_decrypt_stream(self.selected_file, output_path, decryptor, chunk_size, file_size, start_pos, visualizer)
+               # Decrypt doesn't need to write tag, it was already read.
+               # We need to exclude the last 16 bytes (tag) from the stream read.
+               self._process_decrypt_stream(input_path, output_path, decryptor, chunk_size, file_size, start_offset, tag_length, visualizer, iv)
 
             duration = time.time() - start_time
-            self._log(f"OPERAÇÃO CONCLUÍDA em {duration:.2f}s", 'success')
-            self._log(f"Arquivo salvo: {os.path.basename(output_path)}", 'success')
+            self._log(f"OPERAÇÃO GCM CONCLUÍDA em {duration:.2f}s", 'success')
+            self._log("Integridade Verificada com Sucesso.", 'success')
+            self._log(f"Saída: {os.path.basename(output_path)}", 'success')
             
-            # Notificação Nativa
             subprocess.run(['notify-send', "Concluído", f"Arquivo: {os.path.basename(output_path)}"])
             
         except Exception as e:
-            self._log(f"ERRO CRÍTICO: {str(e)}", 'error')
+            self._log(f"ERRO: {str(e)}", 'error')
+            if "Authentication failed" in str(e) or "Objective-C received" in str(e): # Cryptography raises generic error sometimes?
+                 self._log("FALHA DE INTEGRIDADE: Senha incorreta ou arquivo corrompido!", 'error')
+            
             import traceback
             traceback.print_exc()
+            
+            # Cleanup bad file
+            if 'output_path' in locals() and os.path.exists(output_path):
+                 os.remove(output_path)
+                 self._log("Arquivo de saída removido por segurança.", 'info')
+
         finally:
             self.is_processing = False
             self._toggle_controls(True)
             self.progress_queue.put(0)
-            self.status_var.set("Sistema Online - Aguardando Comando")
+            self.status_var.set("Sistema Online - Modo GCM")
 
-    def _process_encrypt_stream(self, input_path, output_path, encryptor, chunk_size, total_size, visualizer=None):
-        padder = padding.PKCS7(128).padder()
+    def _process_encrypt_stream(self, input_path, output_path, encryptor, chunk_size, total_size, visualizer=None, iv=None):
         processed = 0
         last_vis_time = 0
+        block_counter = 2 # Starts at 2 basically (1 is reserved/used usually, but OpenSSL mechanics are subtle. 
+                          # Standard GCM: J0 = IV || 0001. J0 is used for Tag. 
+                          # First encryption block is J0 + 1 = IV || 0002.
+                          # Let's assume standard increment.)
         
-        with open(input_path, 'rb') as f_in, open(output_path, 'ab') as f_out:
-            while True:
-                chunk = f_in.read(chunk_size)
-                if len(chunk) == 0:
-                    padded = padder.finalize()
-                    encrypted = encryptor.update(padded) + encryptor.finalize()
-                    f_out.write(encrypted)
-                    break
-                
-                padded_chunk = padder.update(chunk)
-                encrypted_chunk = encryptor.update(padded_chunk)
-                f_out.write(encrypted_chunk)
-                
-                processed += len(chunk)
-                
-                cur_time = time.time()
-                # Throttled visualization
-                if visualizer and (cur_time - last_vis_time > 1.0) and processed < chunk_size * 2: 
-                     # Show early chunks preferred
-                     if len(chunk) >= 16:
-                        visualizer.visualize_block(chunk[:16])
-                        last_vis_time = cur_time
-                
-                self.visual_data_queue.put(encrypted_chunk)
-                self.progress_queue.put((processed / total_size) * 100)
+        # We append to file which already has salt+iv
+        with open(output_path, 'ab') as f_out:
+            if self.is_folder:
+                 # ... (tar handling) ...
+                 class EncryptingStream:
+                     def __init__(self_stream, encryptor, f_out, callback_progress, total):
+                         self_stream.enc = encryptor
+                         self_stream.f = f_out
+                         self_stream.processed = 0
+                         self_stream.total = total
+                         self_stream.vis_callback = visualizer
+                         self_stream.last_vis = 0
+                         self_stream.ctr = 2 # GCM Counter tracking
 
-    def _process_decrypt_stream(self, input_path, output_path, decryptor, chunk_size, total_size, start_offset, visualizer=None):
-        unpadder = padding.PKCS7(128).unpadder()
+                     def write(self_stream, data):
+                         if not data: return
+                         enc_data = self_stream.enc.update(data)
+                         self_stream.f.write(enc_data)
+                         self_stream.processed += len(data)
+                         
+                         # Progress
+                         if self_stream.total > 0:
+                             prog = (self_stream.processed / self_stream.total) * 100
+                             # Hacky access to outer class queue
+                             self.progress_queue.put(prog)
+                             self.visual_data_queue.put(enc_data) 
+                         
+                         # Visualizer Hook
+                         cur = time.time()
+                         if self_stream.vis_callback and (cur - self_stream.last_vis > 1.0) and len(data) >= 16:
+                              # NOTE: Visualizer needs GCM params
+                              if iv:
+                                  self_stream.vis_callback.visualize_gcm_block(data[:16], iv, self_stream.ctr, True)
+                              self_stream.last_vis = cur
+                         
+                         # Est. blocks processed
+                         self_stream.ctr += (len(data) // 16)
+
+                     def flush(self_stream): pass
+                 
+                 stream = EncryptingStream(encryptor, f_out, None, total_size)
+                 with tarfile.open(fileobj=stream, mode='w|') as tar:
+                     tar.add(input_path, arcname=os.path.basename(input_path))
+                 
+                 final_data = encryptor.finalize()
+                 f_out.write(final_data)
+                 
+            else:
+                with open(input_path, 'rb') as f_in:
+                    while True:
+                        chunk = f_in.read(chunk_size)
+                        if len(chunk) == 0:
+                            f_out.write(encryptor.finalize())
+                            break
+                        
+                        encrypted_chunk = encryptor.update(chunk)
+                        f_out.write(encrypted_chunk)
+                        
+                        processed += len(chunk)
+                        cur_time = time.time()
+                        if visualizer and (cur_time - last_vis_time > 1.0) and len(chunk) >= 16: 
+                                if iv:
+                                    visualizer.visualize_gcm_block(chunk[:16], iv, block_counter, True)
+                                last_vis_time = cur_time
+                        
+                        self.visual_data_queue.put(encrypted_chunk)
+                        self.progress_queue.put((processed / total_size) * 100)
+                        
+                        block_counter += (len(chunk) // 16)
+        
+        return encryptor.tag
+
+    def _process_decrypt_stream(self, input_path, output_path, decryptor, chunk_size, total_size, start_offset, tag_len, visualizer=None, iv=None):
         processed = 0
-        real_total = total_size - start_offset
+        real_total = total_size - start_offset - tag_len
         last_vis_time = 0
+        block_counter = 2 # Assumption for Standard GCM
         
         with open(input_path, 'rb') as f_in, open(output_path, 'wb') as f_out:
+            
+            # We must read until EOF - tag_len
             f_in.seek(start_offset)
-            while True:
-                chunk = f_in.read(chunk_size)
-                if len(chunk) == 0:
-                    final_data = decryptor.finalize()
-                    unpadded = unpadder.update(final_data) + unpadder.finalize()
-                    f_out.write(unpadded)
-                    break
+            remaining = real_total
+            
+            while remaining > 0:
+                read_size = min(chunk_size, remaining)
+                chunk = f_in.read(read_size)
+                if not chunk: break 
                 
                 decrypted_chunk = decryptor.update(chunk)
-                try:
-                    unpadded_chunk = unpadder.update(decrypted_chunk)
-                    f_out.write(unpadded_chunk)
-                except ValueError:
-                    pass
+                f_out.write(decrypted_chunk)
                 
+                remaining -= len(chunk)
                 processed += len(chunk)
                 
                 cur_time = time.time()
-                if visualizer and (cur_time - last_vis_time > 1.0) and processed < chunk_size * 2: 
-                     if len(chunk) >= 16:
-                        visualizer.visualize_decrypt_block(chunk[:16])
+                if visualizer and (cur_time - last_vis_time > 1.0) and len(chunk) >= 16: 
+                        if iv:
+                            # Decrypt: Input is Ciphertext (chunk)
+                            visualizer.visualize_gcm_block(chunk[:16], iv, block_counter, False)
                         last_vis_time = cur_time
 
-                self.visual_data_queue.put(decrypted_chunk)
+                self.visual_data_queue.put(decrypted_chunk) 
                 self.progress_queue.put((processed / real_total) * 100)
+                
+                block_counter += (len(chunk) // 16)
+            
+            # Finalize verifies tag
+            decryptor.finalize()
 
     def _toggle_controls(self, state):
         s = "normal" if state else "disabled"

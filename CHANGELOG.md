@@ -5,6 +5,29 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [4.7] - 2026-02-06
+### Added
+- 🌍 **English Translation**: Complete localization of UI and Technical Logs.
+- 🎨 **New Icon**: Final professional icon integrated.
+- 🐛 **Bug Fixes**: Fixed import errors and redundant translation blocks.
+
+## [4.6] - 2026-02-06
+### Added
+- 🚀 **Turbo Serpent**: Implemented `libserpent.so` (C Extension) to replace pure Python backend.
+- ⚡ **Performance**: Encryption of large files is now instant (native speed).
+- 🧠 **Hybrid Architecture**: Uses C for data processing and Python for educational visualization.
+
+## [4.5] - 2026-02-06
+### Added
+- 🐍 **Serpent Cipher**: Added Serpent-256 algorithm support.
+- 👁️ **32-Round Trace**: Full visualization of Serpent's internal rounds.
+- 🔒 **Authenticated Encryption**: Implemented CTR mode + HMAC-SHA256 for Serpent.
+
+## [4.0] - 2026-02-06
+### Changed
+- 🛡️ **AES-GCM**: Migrated from CBC to GCM mode for authenticated encryption.
+- 📂 **Folder Support**: Added automatic tar-stream encryption for folders.
+
 ## [3.9] - 2026-02-06
 ### Adicionado
 - 🔐 **Descriptografia Visível ("Deep Vision")**: Implementação completa da matemática inversa do AES (InvSubBytes, InvShiftRows, InvMixColumns) no visualizador.

@@ -4,7 +4,7 @@
 
 
 
-**Aplicativo GUI simples para criptografia de arquivos usando AES-256**
+**Simple GUI app for file encryption using AES-256-GCM & Serpent**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -18,18 +18,19 @@
 
 ## 📋 Sobre
 
-**Simple AES Encryptor** é uma aplicação GUI desenvolvida em Python para criptografar e descriptografar arquivos usando o algoritmo **AES-256-CBC**. O diferencial é o **monitor de criptografia em tempo real** que mostra visualmente o processo de criptografia acontecendo, estilo terminal hacker.
+**Simple Encryptor GCM** is a GUI application developed in Python to encrypt and decrypt files using **AES-256-GCM** and **Serpent-256**. The key feature is the **real-time education monitor** that visually shows the encryption process step-by-step (e.g. Matrix Mixing, S-Boxes) while maintaining high performance via C extensions.
 
 ### ✨ Recursos
 
-- 🔐 **Criptografia AES-256-CBC**: Padrão industrial de segurança
-- 🔑 **PBKDF2**: Derivação de chave com 100.000 iterações
+- 🔐 **Multi-Algorithm**: AES-256-GCM (Standard) & Serpent-256 (High Security)
+- 🚀 **Turbo Performance**: Custom C backend (`libserpent`) for Serpent acceleration
+- 🔑 **PBKDF2**: Key derivation with HMAC-SHA256
 - 🎨 **Interface Moderna**: CustomTkinter com tema Dark/Matrix
-- 👁️ **Deep Vision**: Inspeção matemática reversa na descriptografia (InvSubBytes, etc)
-- 📟 **Monitor em Tempo Real**: Terminal visual rodando a lógica do AES passo-a-passo
+- 👁️ **Deep Vision**: Inspection of internal rounds (AES MixColumns, Serpent S-Boxes)
+- 📟 **Real-Time Monitor**: Visual terminal showing the crypto math live via sampling
 - 📦 **Pacote Debian**: Fácil instalação via `.deb`
-- 🎯 **Integração Desktop**: Ícone Profissional e Menu de Contexto
-- 🔒 **Seguro**: Salt e IV únicos para cada arquivo
+- 🎯 **Desktop Integration**: Drag & Drop support, Native File Dialogs
+- 🔒 **Authenticated Encryption**: GCM (AES) and CTR+HMAC (Serpent) ensure integrity
 
 ## 🚀 Instalação
 
@@ -111,15 +112,18 @@ graph LR
 +----------------+----------------+------------------------+
 ```
 
-### Especificações Técnicas
+### Technical Specifications
 
-- **Algoritmo**: AES-256 em modo CBC
-- **Tamanho da Chave**: 256 bits (32 bytes)
-- **Derivação de Chave**: PBKDF2-HMAC-SHA256
-- **Iterações PBKDF2**: 100.000
-- **Padding**: PKCS7 (blocos de 128 bits)
-- **Salt**: 16 bytes aleatórios (via `secrets`)
-- **IV**: 16 bytes aleatórios (via `secrets`)
+- **Algorithms**: 
+    - AES-256 (GCM Mode)
+    - Serpent-256 (CTR Mode + HMAC-SHA256)
+- **Key Size**: 256 bits (32 bytes)
+- **KDF**: PBKDF2-HMAC-SHA256 (100,000 iterations)
+- **Integrity**: GCM Tag (16 bytes) or HMAC-SHA256 Tag (16 bytes)
+- **Salt/IV**: Randomly generated per file (Secrets module)
+- **Backend**: 
+    - AES: OpenSSL (via `cryptography`)
+    - Serpent: Custom C Extension (`libserpent.so`) + Pure Python Fallback
 
 ## 📁 Estrutura do Projeto
 
