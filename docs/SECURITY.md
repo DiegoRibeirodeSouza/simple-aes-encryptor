@@ -1,320 +1,315 @@
-# Guia de Segurança - Simple AES Encryptor
+# Security Guide - Simple Encryptor GCM
 
-## 🔒 Resumo de Segurança
+## 🔒 Security Summary
 
-Este aplicativo implementa **criptografia forte** usando AES-256, mas a segurança final depende de **como você o usa**.
+This application implements **strong encryption** using AES-256 and Serpent-256, but final security depends on **how you use it**.
 
 > [!WARNING]
-> **Regra de Ouro**: A segurança dos seus arquivos é **tão forte quanto sua senha**. Uma senha fraca = criptografia inútil.
+> **Golden Rule**: Your file security is **as strong as your password**. A weak password = useless encryption.
 
-## ✅ O Que Este Aplicativo FAZ
+## ✅ What This App DOES
 
-### Proteções Implementadas
+### Implemented Protections
 
-#### 1. Criptografia AES-256-CBC
-- ✅ Algoritmo padrão ouro da indústria
-- ✅ Usado por governos e bancos mundialmente
-- ✅ Praticamente impossível de quebrar por força bruta
+#### 1. AES-256-GCM & Serpent-256
+- ✅ Gold standard industry algorithms
+- ✅ Used by governments and banks worldwide
+- ✅ Virtually impossible to break via brute-force (if password is strong)
 
-#### 2. Derivação de Chave Robusta (PBKDF2)
-- ✅ 100.000 iterações SHA-256
-- ✅ Protege contra ataques de dicionário
-- ✅ Torna brute-force extremamente lento
+#### 2. Robust Key Derivation (PBKDF2)
+- ✅ 100,000 iterations of HMAC-SHA256
+- ✅ Protects against dictionary attacks
+- ✅ Makes brute-force extremely slow
 
-#### 3. Salt e IV Únicos
-- ✅ Gerados aleatoriamente via `secrets` (CSPRNG)
-- ✅ Impede ataques de rainbow table
-- ✅ Garante que arquivos idênticos → ciphertexts diferentes
+#### 3. Unique Salt & IV
+- ✅ Randomly generated via `secrets` (CSPRNG)
+- ✅ Prevents rainbow table attacks
+- ✅ Ensures identical files → different ciphertexts
 
-#### 4. Padding Seguro (PKCS7)
-- ✅ Padrão da indústria
-- ✅ Sem vazamento de informação de tamanho
+#### 4. Authenticated Encryption
+- ✅ **AES-GCM**: Built-in authentication tag (128-bit)
+- ✅ **Serpent-CTR**: Custom HMAC-SHA256 (128-bit truncated) layer
+- ✅ Detects tampering/corruption before decryption
 
-## ❌ O Que Este Aplicativo NÃO FAZ
+## ❌ What This App DOES NOT DO
 
-### Limitações Importantes
+### Important Limitations
 
-#### 1. Não Protege Contra Keyloggers
-Se sua senha for capturada por:
-- Keylogger de hardware
-- Malware no sistema
+#### 1. Does Not Protect Against Keyloggers
+If your password is captured by:
+- Hardware keylogger
+- System malware
 - Screen recording
 
-➡️ **O atacante pode descriptografar seus arquivos**
+➡️ **The attacker can decrypt your files**
 
-**Mitigação:** Use antivírus atualizado e sistema operacional seguro
+**Mitigation:** Use up-to-date antivirus and a secure OS.
 
-#### 2. Não Protege Contra Acesso Físico
-Se alguém tem acesso físico:
-- Pode instalar keyloggers
-- Pode extrair chaves da RAM (cold boot attack)
-- Pode usar engenharia social
+#### 2. Does Not Protect Against Physical Access
+If someone has physical access:
+- Can install keyloggers
+- Can extract keys from RAM (cold boot attack)
+- Can use social engineering
 
-➡️ **Proteja fisicamente seu computador**
+➡️ **Physically protect your computer**
 
-**Mitigação:** Criptografia de disco completo (LUKS, BitLocker)
+**Mitigation:** Full Disk Encryption (LUKS, BitLocker)
 
-#### 3. Não Protege Metadados
-Informações vazadas:
-- ❌ Nome do arquivo original (parcialmente)
-- ❌ Tamanho aproximado do arquivo
-- ❌ Data de modificação
+#### 3. Does Not Protect Metadata
+Leaked info:
+- ❌ Original filename (partially masked in folder mode)
+- ❌ Approximate file size
+- ❌ Modification date
 
-➡️ **Metadados podem revelar informações**
+➡️ **Metadata can reveal information**
 
-#### 4. Sem Autenticação (HMAC/GCM)
-- ❌ Não detecta modificação maliciosa do ciphertext
-- ❌ Vulnerável a bit-flipping attacks (teórico)
-
-**Status atual:** CBC sem HMAC  
-**Futuro:** Migração para AES-GCM (autenticação embutida)
-
-#### 5. Sem Recuperação de Senha
+#### 4. No Password Recovery
 > [!CAUTION]
-> **ESQUECEU A SENHA = ARQUIVO PERDIDO PARA SEMPRE**
+> **FORGOT PASSWORD = FILE LOST FOREVER**
 
-Não há:
+There is no:
 - ❌ Backdoor
-- ❌ Chave mestra
-- ❌ Recuperação de conta
-- ❌ "Esqueci minha senha"
+- ❌ Master key
+- ❌ Account recovery
+- ❌ "Forgot my password"
 
-**Isso é um RECURSO, não um bug.** Garante que só você pode acessar.
+**This is a FEATURE, not a bug.** It ensures only YOU can access it.
 
-## 🛡️ Boas Práticas de Uso
+## 🛡️ Usage Best Practices
 
-### 1. Senhas Fortes
+### 1. Strong Passwords
 
-#### ❌ Senhas RUINS:
+#### ❌ BAD Passwords:
 ```
-senha123
-password
+password123
+admin
 12345678
-nome+data (ex: maria1985)
-palavras do dicionário
+name+date (e.g., mary1985)
+dictionary words
 ```
 
-#### ✅ Senhas BOAS:
+#### ✅ GOOD Passwords:
 ```
-T#9kL@mP2$qR8nF!vZ4w  (aleatória)
-cavalo-correto-bateria-grampo (4+ palavras aleatórias)
-M1nh@F@s3S3gur@2026!  (longa e variada)
+T#9kL@mP2$qR8nF!vZ4w  (random)
+horse-correct-battery-staple (4+ random words)
+MySnh@P@ssPhraz32026!  (long and varied)
 ```
 
-**Recomendações:**
-- 🔢 Mínimo **12 caracteres** (ideal: 16+)
-- 🔠 Misture maiúsculas, minúsculas, números e símbolos
-- 🎲 Use um **gerenciador de senhas** (Bitwarden, KeePassXC)
-- 🔄 Senhas únicas para cada arquivo crítico
+**Recommendations:**
+- 🔢 Minimum **12 characters** (ideal: 16+)
+- 🔠 Mix uppercase, lowercase, numbers, and symbols
+- 🎲 Use a **password manager** (Bitwarden, KeePassXC)
+- 🔄 Unique passwords for each critical file
 
-### 2. Gerenciamento de Senhas
+### 2. Password Management
 
 ```bash
-# NUNCA faça isso:
-echo "minha_senha" > senha.txt  # ❌
-echo "senha123" | simple-encryptor  # ❌
+# NEVER do this:
+echo "my_password" > pass.txt  # ❌
+echo "pass123" | simple-encryptor  # ❌
 
-# Prefira:
-# 1. Digite manualmente
-# 2. Use gerenciador de senhas
-# 3. Copie e cole de fonte segura
+# Prefer:
+# 1. Type manually
+# 2. Use password manager
+# 3. Copy-paste from secure source
 ```
 
-### 3. Armazenamento de Arquivos
+### 3. File Storage
 
-#### Depois de Criptografar:
+#### After Encrypting:
 
 ```bash
-# REMOVA o arquivo original de forma segura
-# (NUNCA use apenas "rm", dados podem ser recuperados)
+# SECURELY REMOVE the original file
+# (NEVER use just "rm", data can be recovered)
 
-# Opção 1: shred (GNU)
-shred -vfz -n 10 arquivo_original.pdf
+# Option 1: shred (GNU)
+shred -vfz -n 10 original_file.pdf
 
-# Opção 2: wipe
-wipe -rf arquivo_original.pdf
+# Option 2: wipe
+wipe -rf original_file.pdf
 
-# Opção 3: srm (secure rm)
-srm arquivo_original.pdf
+# Option 3: srm (secure rm)
+srm original_file.pdf
 ```
 
 #### Backups:
 
 > [!IMPORTANT]
-> Faça backup dos arquivos **.encrypted**, mas em locais separados!
+> Backup your **.encrypted** files, but in separate locations!
 
 ```
-✅ BOM: arquivo.encrypted na nuvem + backup local
-❌ RUIM: apenas uma cópia do arquivo.encrypted
+✅ GOOD: file.encrypted on cloud + local backup
+❌ BAD: only one copy of file.encrypted
 ```
 
-### 4. Compartilhamento Seguro
+### 4. Secure Sharing
 
-Se precisar compartilhar arquivos criptografados:
+If you need to share encrypted files:
 
 ```
-✅ Envie arquivo.encrypted por um canal (ex: email)
-✅ Envie senha por canal DIFERENTE (ex: Signal, Telegram)
-❌ NUNCA envie arquivo + senha pelo mesmo canal
+✅ Send file.encrypted via one channel (e.g., Email)
+✅ Send password via DIFFERENT channel (e.g., Signal, Telegram)
+❌ NEVER send file + password via same channel
 ```
 
-## 🔍 Cenários de Ameaça
+## 🔍 Threat Models
 
-### Cenário 1: Proteção de Arquivos Pessoais
+### Scenario 1: Personal File Protection
 
-**Ameaça:** Roubo de laptop  
-**Solução:** ✅ Este app é suficiente  
-**Uso:**
+**Threat:** Laptop theft  
+**Solution:** ✅ This app is sufficient  
+**Usage:**
 ```bash
-simple-encryptor documentos_pessoais.zip
-# Senha forte
-# Delete original com shred
+simple-encryptor personal_docs.zip
+# Strong password
+# Delete original with shred
 ```
 
-### Cenário 2: Dados Sensíveis Corporativos
+### Scenario 2: Corporate Sensitive Data
 
-**Ameaça:** Compliance, vazamento  
-**Solução:** ✅ Use + criptografia de disco  
-**Camadas:**
-1. Criptografia de disco (LUKS)
-2. Este app para arquivos extra-sensíveis
-3. Política de senhas corporativa
+**Threat:** Compliance, leaks  
+**Solution:** ✅ Use + Disk Encryption  
+**Layers:**
+1. Full Disk Encryption (LUKS)
+2. This app for extra-sensitive files
+3. Corporate password policy
 
-### Cenário 3: Proteção Contra Governo/Adversário Forte
+### Scenario 3: Protection Against State/Advanced Adversary
 
-**Ameaça:** Vigilância estatal, forensics avançado  
-**Solução:** ⚠️ Considere ferramentas extras  
-**Recomendações:**
-- Use VeraCrypt/LUKS para containers
-- Considere nega plausível (hidden volumes)
-- Use Tails OS para operações críticas
-- Este app ainda é útil como camada adicional
+**Threat:** State surveillance, advanced forensics  
+**Solution:** ⚠️ Consider extra tools  
+**Recommendations:**
+- Use VeraCrypt/LUKS for containers
+- Consider plausible deniability (hidden volumes)
+- Use Tails OS for critical operations
+- This app is still useful as an additional layer
 
-### Cenário 4: Arquivamento de Longo Prazo
+### Scenario 4: Long-Term Archival
 
-**Ameaça:** Esquecimento de senha, obsolescência  
-**Solução:** ⚠️ Cuidado extra necessário  
-**Práticas:**
+**Threat:** Forgetting password, obsolescence  
+**Solution:** ⚠️ Extra care needed  
+**Practices:**
 ```
-✅ Documente o método (AES-256-CBC)
-✅ Armazene a senha em cofre físico
-✅ Teste descriptografia periodicamente (1x/ano)
-✅ Mantenha múltiplas cópias do .encrypted
-⚠️ Considere key escrow para dados críticos
-```
-
-## 🔬 Detalhes Técnicos de Segurança
-
-### Força Criptográfica
-
-```
-AES-256 keyspace: 2^256 ≈ 1.15 × 10^77 chaves
-
-Assumindo 1 bilhão de bilhões de tentativas/segundo:
-Tempo para testar 50% do keyspace: 10^53 anos
-
-Idade do universo: ~10^10 anos
-
-Conclusão: AES-256 é seguro contra força bruta
+✅ Document the method (AES-256-GCM)
+✅ Store password in physical safe
+✅ Test decryption periodically (1x/year)
+✅ Keep multiple copies of .encrypted
+⚠️ Consider key escrow for critical data
 ```
 
-### PBKDF2 - Proteção de Senha
+## 🔬 Technical Security Details
+
+### Cryptographic Strength
+
+```
+AES-256 keyspace: 2^256 ≈ 1.15 × 10^77 keys
+
+Assuming 1 billion billion attempts/second:
+Time to test 50% of keyspace: 10^53 years
+
+Universe age: ~10^10 years
+
+Conclusion: AES-256 is secure against brute force
+```
+
+### PBKDF2 - Password Protection
 
 ```python
-# Configuração atual:
+# Current Configuration:
 iterations = 100,000
 algorithm = SHA256
+salt_size = 16 bytes
 
-# Tempo de derivação: ~100ms (depende do hardware)
-# Tempo para atacante testar 10,000 senhas: ~1,000 segundos
+# Derivation Time: ~100ms (hardware dependent)
+# Time for attacker to test 10,000 passwords: ~1,000 seconds
 
-# Comparação:
-# - Sem PBKDF2: 10,000 senhas em ~0.01 segundos
-# - Com PBKDF2: 100,000x mais lento
+# Comparison:
+# - Without PBKDF2: 10,000 passwords in ~0.01 seconds
+# - With PBKDF2: 100,000x slower
 ```
 
-**Recomendação OWASP 2024:** Mínimo 100,000 iterações ✅
+**OWASP 2024 Recommendation:** Minimum 100,000 iterations ✅
 
 ### Randomness Quality
 
 ```python
 import secrets  # ✅ CSPRNG (Cryptographically Secure)
 
-salt = secrets.token_bytes(16)  # Entropia: 128 bits
-iv = secrets.token_bytes(16)    # Entropia: 128 bits
+salt = secrets.token_bytes(16)  # Entropy: 128 bits
+iv = secrets.token_bytes(16)    # Entropy: 128 bits
 
-# NÃO usamos:
-# random.randbytes()  ❌ Não criptograficamente seguro
+# WE DO NOT USE:
+# random.randbytes()  ❌ Not cryptographically secure
 ```
 
-## ⚠️ Avisos Importantes
+## ⚠️ Important Warnings
 
 > [!CAUTION]
-> ### 1. Este App NÃO É Certificado
-> - Não passou por auditoria de segurança formal
-> - Use para dados pessoais, não missão crítica
-> - Para dados extremamente sensíveis, use soluções certificadas (GPG, VeraCrypt)
+> ### 1. This App is NOT Certified
+> - Has not undergone formal security audit
+> - Use for personal data, not mission-critical secrets without extra layers
+> - For top-secret data, use certified solutions (GPG, VeraCrypt)
 
 > [!WARNING]
-> ### 2. Implementação Própria de Crypto
-> - Usa biblioteca `cryptography` (auditada e confiável) ✅
-> - Mas a combinação/implementação é custom
-> - "Don't roll your own crypto" - seguimos princípios estabelecidos
+> ### 2. Custom Crypto Implementation
+> - Uses `cryptography` library (audited and trusted) ✅
+> - But the combination/logic is custom code
+> - "Don't roll your own crypto" - we follow established standards but keep this in mind
 
 > [!IMPORTANT]
-> ### 3. Sem Garantias Legais
-> - Fornecido "AS IS" (Licença MIT)
-> - Nenhuma garantia de inviolabilidade
-> - Você é responsável por seus dados
+> ### 3. No Legal Warranty
+> - Provided "AS IS" (MIT License)
+> - No guarantee of invulnerability
+> - You are responsible for your data
 
-## 🆘 E Se...
+## 🆘 What If...
 
-### "Esqueci minha senha!"
-**Resposta:** Não há recuperação. Arquivo perdido.  
-**Prevenção:** Use gerenciador de senhas, documente senhas críticas.
+### "I forgot my password!"
+**Answer:** No recovery. File lost.  
+**Prevention:** Use a password manager, document critical passwords.
 
-### "Meu arquivo criptografado corrompeu!"
-**Resposta:** Sem backup = perda total.  
-**Prevenção:** Múltiplos backups em locais diferentes.
+### "My encrypted file is corrupted!"
+**Answer:** Authentication tag check will fail. Decryption aborted.  
+**Prevention:** Multiple backups in different locations. Use ECC RAM if possible.
 
-### "Alguém alterou meu .encrypted!"
-**Resposta:** Descriptografia falhará. Sem forma de detectar maliciously.  
-**Prevenção:** Checksums (SHA256) do .encrypted, armazenamento seguro.
+### "Someone modified my .encrypted file!"
+**Answer:** Decryption will fail (Integrity Check).  
+**Prevention:** GCM/HMAC handles this.
 
-### "Preciso provar que descriptografei!"
-**Resposta:** Aplicativo não gera logs ou certificados.  
-**Prevenção:** Para cenários forenses, use ferramentas com non-repudiation.
+### "I need to prove I decrypted it!"
+**Answer:** App does not generate logs/certs for non-repudiation.  
+**Prevention:** For forensic scenarios, use tools with digital signatures.
 
-## 📚 Leitura Adicional
+## 📚 Further Reading
 
-### Padrões e Especificações
-- [NIST SP 800-38A](https://csrc.nist.gov/publications/detail/sp/800-38a/final) - Modos de Operação AES
+### Standards & Specs
+- [NIST SP 800-38D](https://csrc.nist.gov/publications/detail/sp/800-38d/final) - AES-GCM
 - [RFC 2898](https://tools.ietf.org/html/rfc2898) - PBKDF2
 - [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 
-### Ferramentas Complementares
-- **VeraCrypt**: Containers criptografados
-- **GPG**: Criptografia assimétrica, assinatura
-- **LUKS**: Criptografia de disco (Linux)
-- **Bitwarden/KeePassXC**: Gerenciadores de senha
+### Complementary Tools
+- **VeraCrypt**: Encrypted containers
+- **GPG**: Asymmetric encryption, signing
+- **LUKS**: Disk encryption (Linux)
+- **Bitwarden/KeePassXC**: Password managers
 
-### Auditoria
-Se desejar auditar o código:
-1. Veja [simple-encryptor/usr/bin/simple-encryptor](file:///home/diego/Documentos/criptografia/simple-encryptor/usr/bin/simple-encryptor)
-2. Foque nas funções `_derive_key`, `_encrypt_file_thread`, `_decrypt_file_thread`
-3. Verifique uso correto da biblioteca `cryptography`
+### Auditing
+If you wish to audit the code:
+1. See [simple-encryptor/usr/bin/simple-encryptor](file:///home/diego/Documentos/criptografia/simple-encryptor/usr/bin/simple-encryptor)
+2. Focus on functions `_derive_key`, `_encrypt_file_thread`, `_decrypt_file_thread`
+3. Verify correct usage of `cryptography` library
 
 ---
 
-## ✅ Checklist de Segurança
+## ✅ Security Checklist
 
-Antes de criptografar dados críticos:
+Before encrypting critical data:
 
-- [ ] Usei senha forte (16+ caracteres)?
-- [ ] Armazenei senha em gerenciador seguro?
-- [ ] Farei backup do .encrypted?
-- [ ] Deletarei o original com shred/wipe?
-- [ ] Testei descriptografar antes de deletar original?
-- [ ] Entendo que sem senha = arquivo perdido?
+- [ ] Strong password used (16+ chars)?
+- [ ] Password stored in secure manager?
+- [ ] Backup of .encrypted made?
+- [ ] Original deleted with shred/wipe?
+- [ ] Tested decryption before deleting original?
+- [ ] Understand that no password = lost file?
 
-**Última atualização:** 2026-02-06
+**Last Update:** 2026-02-06

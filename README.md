@@ -1,8 +1,6 @@
-# Simple AES Encryptor 🔐
+# Simple Encryptor GCM 🔐
 
 <div align="center">
-
-
 
 **Simple GUI app for file encryption using AES-256-GCM & Serpent**
 
@@ -10,105 +8,105 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Debian Package](https://img.shields.io/badge/package-.deb-red.svg)](https://www.debian.org/)
 
-[Instalação](#-instalação) • [Uso](#-uso) • [Recursos](#-recursos) • [Documentação](#-documentação)
+[Installation](#-installation) • [Usage](#-usage) • [Features](#-features) • [Documentation](#-documentation)
 
 </div>
 
 ---
 
-## 📋 Sobre
+## 📋 About
 
 **Simple Encryptor GCM** is a GUI application developed in Python to encrypt and decrypt files using **AES-256-GCM** and **Serpent-256**. The key feature is the **real-time education monitor** that visually shows the encryption process step-by-step (e.g. Matrix Mixing, S-Boxes) while maintaining high performance via C extensions.
 
-### ✨ Recursos
+### ✨ Features
 
 - 🔐 **Multi-Algorithm**: AES-256-GCM (Standard) & Serpent-256 (High Security)
 - 🚀 **Turbo Performance**: Custom C backend (`libserpent`) for Serpent acceleration
 - 🔑 **PBKDF2**: Key derivation with HMAC-SHA256
-- 🎨 **Interface Moderna**: CustomTkinter com tema Dark/Matrix
+- 🎨 **Modern Interface**: CustomTkinter with Dark/Matrix theme
 - 👁️ **Deep Vision**: Inspection of internal rounds (AES MixColumns, Serpent S-Boxes)
 - 📟 **Real-Time Monitor**: Visual terminal showing the crypto math live via sampling
-- 📦 **Pacote Debian**: Fácil instalação via `.deb`
+- 📦 **Debian Package**: Easy installation via `.deb`
 - 🎯 **Desktop Integration**: Drag & Drop support, Native File Dialogs
 - 🔒 **Authenticated Encryption**: GCM (AES) and CTR+HMAC (Serpent) ensure integrity
 
-## 🚀 Instalação
+## 🚀 Installation
 
-### Método 1: Via Pacote .deb (Recomendado)
+### Method 1: Via .deb Package (Recommended)
 
 ```bash
-# Instale o pacote
+# Install the package
 sudo dpkg -i simple-encryptor.deb
 
-# Se houver dependências faltando:
+# If dependencies are missing:
 sudo apt-get install -f
 ```
 
-### Método 2: Execução Direta
+### Method 2: Direct Execution
 
 ```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/simple-aes-encryptor.git
+# Clone the repository
+git clone https://github.com/your-username/simple-aes-encryptor.git
 cd simple-aes-encryptor
 
-# Instale as dependências
+# Install dependencies
 sudo apt-get install python3-tk python3-cryptography
 pip3 install customtkinter --break-system-packages
 
-# Execute
+# Run
 python3 simple-encryptor/usr/bin/simple-encryptor
 ```
 
-## 💻 Uso
+## 💻 Usage
 
-### Iniciar o Aplicativo
+### Launch the Application
 
 **Via Terminal:**
 ```bash
 simple-encryptor
 ```
 
-**Via Menu:** Procure por "Simple AES Encryptor" no menu de aplicações (Utilidades → Segurança)
+**Via Menu:** Search for "Simple AES Encryptor" in your applications menu (Utilities → Security)
 
-### Criptografar um Arquivo
+### Encrypt a File
 
-1. Clique em **"Selecionar Arquivo"**
-2. Escolha o arquivo desejado
-3. Digite uma **senha forte**
-4. Clique em **"🔐 Criptografar"**
-5. Observe o monitor mostrando o processo em tempo real
-6. Arquivo será salvo como `[nome-original].encrypted`
+1. Click on **"Select File"**
+2. Choose the desired file
+3. Enter a **strong password**
+4. Click on **"🔐 Encrypt"**
+5. Watch the monitor showing the process in real-time
+6. File will be saved as `[original-name].encrypted`
 
-### Descriptografar um Arquivo
+### Decrypt a File
 
-1. Selecione o arquivo `.encrypted`
-2. Digite a **mesma senha** usada na criptografia
-3. Clique em **"🔓 Descriptografar"**
-4. Arquivo original será restaurado
+1. Select the `.encrypted` file
+2. Enter the **same password** used for encryption
+3. Click on **"🔓 Decrypt"**
+4. Original file will be restored
 
-## 🔧 Como Funciona
+## 🔧 How It Works
 
-### Processo de Criptografia
+### Encryption Process
 
 ```mermaid
 graph LR
-    A[Arquivo Original] --> B[Leitura]
-    B --> C[Padding PKCS7]
-    C --> D[Gera Salt + IV]
-    D --> E[Deriva Chave PBKDF2]
+    A[Original File] --> B[Read]
+    B --> C[PKCS7 Padding]
+    C --> D[Generate Salt + IV]
+    D --> E[Derive Key PBKDF2]
     E --> F[AES-256-CBC]
-    F --> G[Arquivo.encrypted]
+    F --> G[File.encrypted]
     
     style A fill:#90EE90
     style G fill:#FFB6C1
     style F fill:#87CEEB
 ```
 
-### Estrutura do Arquivo Criptografado
+### Encrypted File Structure
 
 ```
 +----------------+----------------+------------------------+
-|   Salt (16B)   |    IV (16B)    |   Dados Criptografados |
+|   Salt (16B)   |    IV (16B)    |   Encrypted Data       |
 +----------------+----------------+------------------------+
 ```
 
@@ -125,137 +123,137 @@ graph LR
     - AES: OpenSSL (via `cryptography`)
     - Serpent: Custom C Extension (`libserpent.so`) + Pure Python Fallback
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 simple-aes-encryptor/
-├── simple-encryptor/           # Estrutura do pacote Debian
+├── simple-encryptor/           # Debian package structure
 │   ├── DEBIAN/
-│   │   └── control             # Metadados do pacote
+│   │   └── control             # Package metadata
 │   └── usr/
 │       ├── bin/
-│       │   └── simple-encryptor  # Executável principal
+│       │   └── simple-encryptor  # Main executable
 │       └── share/
 │           ├── applications/
 │           │   └── simple-encryptor.desktop
 │           └── icons/
 │               └── simple-encryptor.png
-├── docs/                       # Documentação
-│   ├── ARCHITECTURE.md         # Arquitetura técnica
-│   ├── SECURITY.md            # Considerações de segurança
-│   └── images/                # Imagens e screenshots
-├── README.md                  # Este arquivo
-├── LICENSE                    # Licença MIT
-├── CONTRIBUTING.md            # Guia de contribuição
-└── .gitignore                # Arquivos ignorados
+├── docs/                       # Documentation
+│   ├── ARCHITECTURE.md         # Technical architecture
+│   ├── SECURITY.md            # Security considerations
+│   └── images/                # Images and screenshots
+├── README.md                  # This file
+├── LICENSE                    # MIT License
+├── CONTRIBUTING.md            # Contribution guide
+└── .gitignore                # Ignored files
 ```
 
 ## 🎨 Screenshots
 
-### Interface Principal
-*[Screenshot da interface principal]*
+### Main Interface
+*[Screenshot of the main interface]*
 
-### Monitor de Criptografia
-O terminal visual mostra em tempo real:
-- Salt e IV gerados
-- Chave derivada
-- Progresso chunk-por-chunk
-- Hexdump dos dados criptografados
+### Encryption Monitor
+The visual terminal shows in real-time:
+- Generated Salt and IV
+- Derived Key
+- Chunk-by-chunk progress
+- Hexdump of encrypted data
 
 ```
 ======================================================================
-INICIANDO CRIPTOGRAFIA AES-256-CBC
+STARTING ENCRYPTION AES-256-CBC
 ======================================================================
-→ Gerando salt: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-→ Gerando IV:   f1e2d3c4b5a69788990a1b2c3d4e5f6
-→ Derivando chave PBKDF2 (100,000 iterações)...
-→ Chave derivada: 1234567890abcdef1234567890abcdef1234567890abcdef...
+→ Generating salt: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+→ Generating IV:   f1e2d3c4b5a69788990a1b2c3d4e5f6
+→ Deriving key PBKDF2 (100,000 iterations)...
+→ Derived Key: 1234567890abcdef1234567890abcdef1234567890abcdef...
 
-→ CRIPTOGRAFANDO DADOS...
+→ ENCRYPTING DATA...
   [ 10.0%] Chunk   1/ 10: a1b2c3d4e5f6789012345678901234567890abcdef...
   [ 20.0%] Chunk   2/ 10: f6e7d8c9b0a1928374650fabcdef0123456789ab...
 ```
 
-## 🛡️ Segurança
+## 🛡️ Security
 
 > [!IMPORTANT]
-> Este aplicativo usa criptografia forte (AES-256), mas a segurança depende da **força da sua senha**.
+> This app uses strong encryption (AES-256), but security depends on the **strength of your password**.
 
-### Boas Práticas
+### Best Practices
 
-✅ Use senhas longas (mínimo 12 caracteres)  
-✅ Combine letras maiúsculas, minúsculas, números e símbolos  
-✅ Nunca compartilhe suas senhas  
-✅ Guarde senhas em um gerenciador de senhas  
-⚠️ **Se esquecer a senha, o arquivo NÃO pode ser recuperado!**
+✅ Use long passwords (minimum 12 characters)  
+✅ Combine uppercase, lowercase, numbers, and symbols  
+✅ Never share your passwords  
+✅ Store passwords in a password manager  
+⚠️ **If you forget the password, the file CANNOT be recovered!**
 
-### Limitações
+### Limitations
 
-- ❌ Não protege contra keyloggers
-- ❌ Não protege contra acesso físico ao sistema
-- ❌ Não inclui autenticação de dois fatores
+- ❌ Does not protect against keyloggers
+- ❌ Does not protect against physical access to the system
+- ❌ Does not include two-factor authentication
 
-Para mais detalhes, consulte [SECURITY.md](docs/SECURITY.md)
+For more details, see [SECURITY.md](docs/SECURITY.md)
 
-## 📚 Documentação
+## 📚 Documentation
 
-- [Arquitetura Técnica](docs/ARCHITECTURE.md) - Detalhes da implementação
-- [Guia de Segurança](docs/SECURITY.md) - Considerações de segurança
-- [Guia de Contribuição](CONTRIBUTING.md) - Como contribuir
+- [Technical Architecture](docs/ARCHITECTURE.md) - Implementation details
+- [Security Guide](docs/SECURITY.md) - Security considerations
+- [Contribution Guide](CONTRIBUTING.md) - How to contribute
 
-## 🤝 Contribuindo
+## 🤝 Contributing
 
-Contribuições são bem-vindas! Por favor, leia [CONTRIBUTING.md](CONTRIBUTING.md) para detalhes sobre o processo.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process.
 
-### Desenvolvimento
+### Development
 
 ```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/simple-aes-encryptor.git
+# Clone the repository
+git clone https://github.com/your-username/simple-aes-encryptor.git
 cd simple-aes-encryptor
 
-# Instale dependências de desenvolvimento
+# Install dev dependencies
 sudo apt-get install python3-tk python3-cryptography
 
-# Faça suas alterações
+# Make your changes
 
-# Reconstrua o pacote
+# Rebuild package
 dpkg-deb --build simple-encryptor
 
-# Teste
+# Test
 sudo dpkg -i simple-encryptor.deb
 simple-encryptor
 ```
 
-## 📄 Licença
+## 📄 License
 
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgements
 
-- [Python Cryptography](https://cryptography.io/) - Biblioteca de criptografia
-- [Tkinter](https://docs.python.org/3/library/tkinter.html) - Framework GUI
+- [Python Cryptography](https://cryptography.io/) - Cryptography library
+- [Tkinter](https://docs.python.org/3/library/tkinter.html) - GUI Framework
 - Icon made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
 
-## 📞 Suporte
+## 📞 Support
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/simple-aes-encryptor/issues)
-- 💬 **Discussões**: [GitHub Discussions](https://github.com/seu-usuario/simple-aes-encryptor/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/your-username/simple-aes-encryptor/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-username/simple-aes-encryptor/discussions)
 
 ## 🗺️ Roadmap
 
-- [ ] Criptografia de múltiplos arquivos
-- [ ] Compressão antes da criptografia
-- [ ] Interface em outros idiomas
-- [ ] Tema claro/escuro
-- [ ] Criptografia de pastas inteiras
+- [ ] Multi-file encryption
+- [ ] Compression before encryption
+- [ ] Interface in other languages
+- [ ] Light/Dark theme
+- [ ] Full folder encryption
 
 ---
 
 <div align="center">
 
-**Desenvolvido com ❤️ usando Python**
+**Developed with ❤️ using Python**
 
-[⬆ Voltar ao topo](#simple-aes-encryptor-)
+[⬆ Back to top](#simple-aes-encryptor-)
 
 </div>
