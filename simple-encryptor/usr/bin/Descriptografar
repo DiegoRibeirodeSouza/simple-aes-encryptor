@@ -1,0 +1,25 @@
+#!/bin/bash
+# Script para Descriptografar via Botão Direito no Caja (Suporte a Batch)
+
+# Pede a senha usando Zenity
+PASSWORD=$(zenity --password --title="Descriptografar - Batch" --text="Digite a senha para descriptografar os itens selecionados:")
+
+# Se o usuário cancelar ou não digitar nada, sai
+if [ -z "$PASSWORD" ]; then
+    exit 1
+fi
+
+# Constrói o comando composto
+CMD=""
+IFS=$'\n'
+for FILE in $CAJA_SCRIPT_SELECTED_FILE_PATHS; do
+    if [ -e "$FILE" ]; then
+        SAFE_FILE=$(echo "$FILE" | sed 's/"/\\"/g')
+        CMD="${CMD}echo \"Processando: $SAFE_FILE\"; simple-encryptor-cli -d \"$SAFE_FILE\" -p \"$PASSWORD\" -v; echo '----------------------------------------'; "
+    fi
+done
+
+# Executa tudo em uma única janela de terminal
+if [ -n "$CMD" ]; then
+    mate-terminal --title="Batch Decryption" --geometry=100x30 -- sh -c "$CMD echo; read -p 'Concluído. Pressione Enter para fechar...' confirm"
+fi

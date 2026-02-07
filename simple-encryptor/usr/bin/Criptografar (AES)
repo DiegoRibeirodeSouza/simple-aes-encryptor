@@ -1,0 +1,27 @@
+#!/bin/bash
+# Script para Criptografar com AES via Botão Direito no Caja (Suporte a Batch)
+
+# Pede a senha usando Zenity (uma única vez para todos os arquivos)
+PASSWORD=$(zenity --password --title="Criptografar (AES) - Batch" --text="Digite a senha para criptografar os itens selecionados:")
+
+# Se o usuário cancelar ou não digitar nada, sai
+if [ -z "$PASSWORD" ]; then
+    exit 1
+fi
+
+# Constrói o comando composto para executar no terminal
+# IFS=$'\n' garante que nomes com espaços sejam tratados corretamente
+CMD=""
+IFS=$'\n'
+for FILE in $CAJA_SCRIPT_SELECTED_FILE_PATHS; do
+    if [ -e "$FILE" ]; then
+        # Escapa aspas duplas no nome do arquivo para o comando sh -c
+        SAFE_FILE=$(echo "$FILE" | sed 's/"/\\"/g')
+        CMD="${CMD}echo \"Processando: $SAFE_FILE\"; simple-encryptor-cli -e \"$SAFE_FILE\" -p \"$PASSWORD\" --algo AES -v; echo '----------------------------------------'; "
+    fi
+done
+
+# Executa tudo em uma única janela de terminal
+if [ -n "$CMD" ]; then
+    mate-terminal --title="Batch Encryption (AES)" --geometry=100x30 -- sh -c "$CMD echo; read -p 'Concluído. Pressione Enter para fechar...' confirm"
+fi
