@@ -5,6 +5,13 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.13.0] - 2026-02-07
+### Adicionado
+- 📂 **Suporte a Pastas**: Agora é possível criptografar diretórios inteiros via CLI ou Menu de Contexto.
+    - O diretório é compactado automaticamente (`.tar`) antes da criptografia.
+    - Na descriptografia, o arquivo é extraído automaticamente.
+    - Totalmente transparente para o usuário: Clica com botão direito na pasta -> Criptografar.
+
 ## [3.12.1] - 2026-02-07
 ### Corrigido
 - 🐛 **Visualização AES**: A visualização na CLI para AES agora exibe todos os rounds e transformações de estado detalhadamente (`SubBytes`, `ShiftRows`, `MixColumns`, `AddRoundKey`), equiparando-se ao nível de detalhe do Serpent.

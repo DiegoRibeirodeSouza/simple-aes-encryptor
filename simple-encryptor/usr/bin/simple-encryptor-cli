@@ -5,6 +5,7 @@ import argparse
 import secrets
 import hashlib
 import time
+import tarfile
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.backends import default_backend
@@ -289,8 +290,28 @@ class SerpentCTRHMACDecryptor:
 
 def encrypt_file(input_path, password, algo="AES", verbose=False):
     if not os.path.exists(input_path):
-        print(f"Error: File not found: {input_path}")
+        print(f"Error: Path not found: {input_path}")
         return
+
+    is_dir = os.path.isdir(input_path)
+    temp_tar = None
+    
+    if is_dir:
+        try:
+            print(f"Directory detected. Creating temporary archive...")
+            # Remove trailing slash if present
+            input_path = input_path.rstrip(os.sep)
+            temp_tar = input_path + ".tar"
+            
+            with tarfile.open(temp_tar, "w") as tar:
+                tar.add(input_path, arcname=os.path.basename(input_path))
+            
+            # Switch input to the tar file
+            input_path = temp_tar
+            print(f"Archive created: {input_path}")
+        except Exception as e:
+            print(f"Error creating archive: {e}")
+            return
 
     print(f"--- STARTING ENCRYPTION ({algo}) ---")
     
@@ -323,40 +344,52 @@ def encrypt_file(input_path, password, algo="AES", verbose=False):
     processed = 0
     start_time = time.time()
     
-    with open(output_path, 'wb') as f_out:
-        # Header
-        magic = b'\x01' if algo == "AES" else b'\x02'
-        f_out.write(magic)
-        f_out.write(salt)
-        f_out.write(iv)
+    try:
+        with open(output_path, 'wb') as f_out:
+            # Header
+            magic = b'\x01' if algo == "AES" else b'\x02'
+            f_out.write(magic)
+            f_out.write(salt)
+            f_out.write(iv)
+            
+            with open(input_path, 'rb') as f_in:
+                first_block = True
+                while True:
+                    chunk = f_in.read(chunk_size)
+                    if not chunk: break
+                    
+                    # Visualizer logic: Show first block
+                    if verbose and first_block:
+                        # Capture first 16 bytes for visualization
+                        block = chunk[:16].ljust(16, b'\x00')
+                        # Counter is 2 for data
+                        visualizer.visualize_block(block, iv, 2)
+                        first_block = False
+                    
+                    ct_chunk = encryptor.update(chunk)
+                    f_out.write(ct_chunk)
+                    
+                    processed += len(chunk)
+                    progress = (processed / file_size) * 100
+                    sys.stdout.write(f"\rProgress: {progress:.1f}%")
+                    sys.stdout.flush()
+                    
+            f_out.write(encryptor.finalize())
+            f_out.write(encryptor.tag)
+            
+        elapsed = time.time() - start_time
+        print(f"\n[SUCCESS] Encrypted to: {output_path} ({elapsed:.2f}s)")
         
-        with open(input_path, 'rb') as f_in:
-            first_block = True
-            while True:
-                chunk = f_in.read(chunk_size)
-                if not chunk: break
-                
-                # Visualizer logic: Show first block
-                if verbose and first_block:
-                    # Capture first 16 bytes for visualization
-                    block = chunk[:16].ljust(16, b'\x00')
-                    # Counter is 2 for data
-                    visualizer.visualize_block(block, iv, 2)
-                    first_block = False
-                
-                ct_chunk = encryptor.update(chunk)
-                f_out.write(ct_chunk)
-                
-                processed += len(chunk)
-                progress = (processed / file_size) * 100
-                sys.stdout.write(f"\rProgress: {progress:.1f}%")
-                sys.stdout.flush()
-                
-        f_out.write(encryptor.finalize())
-        f_out.write(encryptor.tag)
-        
-    elapsed = time.time() - start_time
-    print(f"\n[SUCCESS] Encrypted to: {output_path} ({elapsed:.2f}s)")
+    except Exception as e:
+        print(f"\n[ERROR] Encryption failed: {e}")
+        # Clean up partial output
+        if os.path.exists(output_path):
+            os.remove(output_path)
+    finally:
+        # Clean up temp tar
+        if is_dir and temp_tar and os.path.exists(temp_tar):
+            os.remove(temp_tar)
+            print("Temporary archive removed.")
 
 def decrypt_file(input_path, password, verbose=False):
     if not os.path.exists(input_path):
@@ -433,6 +466,20 @@ def decrypt_file(input_path, password, verbose=False):
     
     elapsed = time.time() - start_time
     print(f"\n[SUCCESS] Decrypted to: {output_path} ({elapsed:.2f}s)")
+    
+    if output_path.endswith('.tar'):
+        try:
+             print(f"[INFO] The decrypted file is an archive. Extracting...")
+             with tarfile.open(output_path, "r") as tar:
+                 tar.extractall(os.path.dirname(output_path))
+             print(f"[SUCCESS] Extracted to current directory.")
+             # Optional: remove the .tar file if extraction was successful? 
+             # For now, let's keep it to be safe, or maybe remove it to be clean?
+             # User said "Auto-extract", usually means replace the tar with content.
+             os.remove(output_path)
+             print(f"[INFO] Removed temporary archive {output_path}")
+        except Exception as e:
+             print(f"[WARN] Failed to auto-extract archive: {e}")
 
 class CustomHelpFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
