@@ -5,6 +5,14 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.12.0] - 2026-02-07
+### Adicionado
+- 👁️ **CLI Visualization**: Adicionado modo visual (`--verbose` ou `-v`) na CLI.
+    - Exibe logs detalhados de criptografia em tempo real no terminal.
+    - Mostra rounds do Serpent/AES, geração de keystream e operações XOR.
+    - Ideal para fins educacionais e de auditoria via terminal.
+- ℹ️ **Help Otimizado**: Mensagens de ajuda da CLI (`-h`) refinadas e 100% em inglês.
+
 ## [3.11.0] - 2026-02-07
 ### Adicionado
 - 💻 **CLI Mode**: Nova ferramenta de linha de comando `simple-encryptor-cli` incluída no pacote.

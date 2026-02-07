@@ -74,6 +74,9 @@ simple-encryptor-cli -e my_file.txt -p my_password
 # Encrypt (Serpent)
 simple-encryptor-cli -e my_file.txt -p my_password --algo SERPENT
 
+# Encrypt with Real-Time Visualization (Serpent)
+simple-encryptor-cli -e my_file.txt -p my_password --algo SERPENT -v
+
 # Decrypt
 simple-encryptor-cli -d my_file.txt.encrypted -p my_password
 ```
