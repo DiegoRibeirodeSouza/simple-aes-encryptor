@@ -5,6 +5,10 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.12.1] - 2026-02-07
+### Corrigido
+- 🐛 **Visualização AES**: A visualização na CLI para AES agora exibe todos os rounds e transformações de estado detalhadamente (`SubBytes`, `ShiftRows`, `MixColumns`, `AddRoundKey`), equiparando-se ao nível de detalhe do Serpent.
+
 ## [3.12.0] - 2026-02-07
 ### Adicionado
 - 👁️ **CLI Visualization**: Adicionado modo visual (`--verbose` ou `-v`) na CLI.

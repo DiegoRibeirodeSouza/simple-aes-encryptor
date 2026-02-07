@@ -86,19 +86,27 @@ class AESVisualizer:
         state = self._bytes_to_matrix(counter_block)
         print(f"GCM Counter Block: {counter_block.hex(' ')} (IV + Ctr {counter_int})")
         print("-> Encrypting Counter to generate Keystream...")
+        print(f"Initial State:\n{self._format_state(state)}")
         
         # --- AES ENCRYPTION OF COUNTER (Simulated) ---
         self._add_round_key(state, 0)
+        print(f"Round 0 (Start) | AddRoundKey:\n{self._format_state(state)}")
+        
         for r in range(1, self.rounds):
             state = self._sub_bytes(state)
             state = self._shift_rows(state)
             state = self._mix_columns(state)
             self._add_round_key(state, r)
+            # Compact log for rounds
+            print(f"Round {r:02d} | SubBytes -> ShiftRows -> MixCols -> AddRoundKey")
+            print(f"State: {self._format_state_line(state)}")
             
         # Final Round
         state = self._sub_bytes(state)
         state = self._shift_rows(state)
         self._add_round_key(state, self.rounds)
+        print(f"Round {self.rounds} (Final) | SubBytes -> ShiftRows -> AddRoundKey")
+        print(f"Final State:\n{self._format_state(state)}")
         
         # --- REAL Keystream via Cryptography Library ---
         backend = default_backend()
@@ -118,6 +126,21 @@ class AESVisualizer:
         print(f"XOR Operation ( Plaintext ^ Keystream )")
         print(f"Ciphertext:    {output_block.hex(' ')}")
         print("--------------------------------------------------")
+
+    def _format_state(self, state):
+        lines = []
+        for r in range(4):
+            line = "  " + " ".join(f"{state[c][r]:02x}" for c in range(4))
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _format_state_line(self, state):
+        # Format as single line list of hex [00 11 22 33 ...]
+        flat = []
+        for c in range(4):
+            for r in range(4):
+                flat.append(f"{state[c][r]:02x}")
+        return " ".join(flat)
 
     def _matrix_to_bytes(self, state):
         res = []
