@@ -1,137 +1,137 @@
-# Contribuindo para Simple AES Encryptor
+# Contributing to Simple Encryptor GCM
 
-Obrigado pelo seu interesse em contribuir! 🎉
+Thank you for your interest in contributing! 🎉
 
-## 📋 Código de Conduta
+## 📋 Code of Conduct
 
-- Seja respeitoso e inclusivo
-- Aceite críticas construtivas
-- Foque no que é melhor para a comunidade
+- Be respectful and inclusive
+- Accept constructive criticism
+- Focus on what is best for the community
 
-## 🚀 Como Contribuir
+## 🚀 How to Contribute
 
-### Reportando Bugs
+### Reporting Bugs
 
-Antes de criar um issue, verifique se já não existe um similar.
+Before creating an issue, check if a similar one already exists.
 
-**Ao reportar um bug, inclua:**
-- Descrição clara do problema
-- Passos para reproduzir
-- Comportamento esperado vs. atual
-- Versão do Python, SO, e do aplicativo
-- Logs ou screenshots (se aplicável)
+**When reporting a bug, include:**
+- Clear description of the problem
+- Steps to reproduce
+- Expected vs. actual behavior
+- Python version, OS, and app version
+- Logs or screenshots (if applicable)
 
-### Sugerindo Melhorias
+### Suggesting Improvements
 
-Issues para novas funcionalidades são bem-vindas! Inclua:
-- Descrição detalhada da funcionalidade
-- Por que seria útil
-- Exemplos de uso
+Issues for new features are welcome! Include:
+- Detailed description of the feature
+- Why it would be useful
+- Usage examples
 
 ### Pull Requests
 
-1. **Fork** o repositório
-2. **Crie** um branch para sua feature (`git checkout -b feature/MinhaFeature`)
-3. **Commit** suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
-4. **Push** para o branch (`git push origin feature/MinhaFeature`)
-5. **Abra** um Pull Request
+1. **Fork** the repository
+2. **Create** a branch for your feature (`git checkout -b feature/MyFeature`)
+3. **Commit** your changes (`git commit -m 'Add MyFeature'`)
+4. **Push** to the branch (`git push origin feature/MyFeature`)
+5. **Open** a Pull Request
 
-## 💻 Configuração do Ambiente de Desenvolvimento
+## 💻 Development Environment Setup
 
 ```bash
-# Clone seu fork
-git clone https://github.com/SEU-USUARIO/simple-aes-encryptor.git
+# Clone your fork
+git clone https://github.com/YOUR-USERNAME/simple-aes-encryptor.git
 cd simple-aes-encryptor
 
-# Instale dependências
+# Install dependencies
 sudo apt-get install python3-tk python3-cryptography
 
-# Teste o aplicativo
+# Test the app
 python3 simple-encryptor/usr/bin/simple-encryptor
 ```
 
-## 🧪 Testes
+## 🧪 Testing
 
-Antes de submeter um PR:
+Before submitting a PR:
 
-1. **Teste funcional**: Execute o app e teste criptografia/descriptografia
-2. **Teste com diferentes arquivos**: Pequenos, grandes, vários formatos
-3. **Teste a instalação do .deb**: Reconstrua e instale o pacote
+1. **Functional Test**: Run the app and test encryption/decryption
+2. **Test with different files**: Small, large, various formats
+3. **Test .deb installation**: Rebuild and install the package
 
 ```bash
-# Reconstruir pacote
+# Rebuild package
 dpkg-deb --build simple-encryptor
 
-# Instalar
+# Install
 sudo dpkg -i simple-encryptor.deb
 
-# Testar
+# Test
 simple-encryptor
 ```
 
-## 📝 Convenções de Código
+## 📝 Code Conventions
 
 ### Python
-- Siga [PEP 8](https://pep8.org/)
-- Use docstrings para funções/classes
-- Nomes descritivos de variáveis
-- Comentários em português ou inglês
+- Follow [PEP 8](https://pep8.org/)
+- Use docstrings for functions/classes
+- Descriptive variable names
+- Comments in English
 
 ### Commits
-- Use mensagens claras e descritivas
-- Prefira inglês para mensagens de commit
-- Formato: `tipo: descrição`
+- Use clear and descriptive messages
+- Use English for commit messages
+- Format: `type: description`
 
-Exemplos:
+Examples:
 ```
-feat: adiciona suporte a drag and drop
-fix: corrige erro ao descriptografar arquivos grandes
-docs: atualiza README com exemplos
-refactor: melhora estrutura do código de criptografia
+feat: add drag and drop support
+fix: fix error when decrypting large files
+docs: update README with examples
+refactor: improve encryption code structure
 ```
 
-## 🏗️ Estrutura do Código
+## 🏗️ Code Structure
 
 ```python
 class EncryptorApp:
-    """Classe principal da aplicação"""
+    """Main application class"""
     
     def __init__(self, root):
-        """Inicializa a interface"""
+        """Initialize UI"""
         
     def _setup_ui(self):
-        """Configura elementos da UI"""
+        """Setup UI elements"""
         
     def _encrypt_file_thread(self):
-        """Thread de criptografia"""
+        """Encryption thread"""
         
     def _decrypt_file_thread(self):
-        """Thread de descriptografia"""
+        """Decryption thread"""
 ```
 
-## 🎯 Áreas para Contribuição
+## 🎯 Contribution Areas
 
-### Fácil
-- Melhorias na documentação
-- Correção de typos
-- Tradução para outros idiomas
-- Melhorias visuais na UI
+### Easy
+- Documentation improvements
+- Typo fixes
+- Translations
+- Visual UI improvements
 
-### Médio
-- Adicionar temas de cores
-- Melhorar tratamento de erros
-- Adicionar validação de senha forte
-- Melhorias de performance
+### Medium
+- Add color themes
+- Improve error handling
+- Add strong password validation
+- Performance improvements
 
-### Avançado
-- Implementar drag and drop
-- Adicionar criptografia de pastas
-- Compressão antes da criptografia
-- Suporte a outros algoritmos
+### Advanced
+- Implement drag and drop (Platform specific improvements)
+- Add folder encryption (Native recursion)
+- Compression before encryption
+- Support for other algorithms
 
-## 📦 Build do Pacote Debian
+## 📦 Debian Package Build
 
-Estrutura do controle:
+Control structure:
 ```
 Package: simple-aes-encryptor
 Version: 1.0.0
@@ -139,28 +139,28 @@ Architecture: all
 Depends: python3 (>= 3.9), python3-tk, python3-cryptography
 ```
 
-Ao modificar dependências, atualize `simple-encryptor/DEBIAN/control`
+When modifying dependencies, update `simple-encryptor/DEBIAN/control`
 
-## ✅ Checklist do PR
+## ✅ PR Checklist
 
-Antes de submeter:
+Before submitting:
 
-- [ ] Código segue PEP 8
-- [ ] Testado em Debian/Ubuntu
-- [ ] Documentação atualizada (se necessário)
-- [ ] Commit messages são claros
-- [ ] Pacote .deb funciona após rebuild
-- [ ] Nenhum warning ou erro no código
+- [ ] Code follows PEP 8
+- [ ] Tested on Debian/Ubuntu
+- [ ] Documentation updated (if necessary)
+- [ ] Commit messages are clear
+- [ ] .deb package works after rebuild
+- [ ] No warnings or errors in code
 
-## 🤔 Dúvidas?
+## 🤔 Questions?
 
-- Abra uma [Discussion](https://github.com/seu-usuario/simple-aes-encryptor/discussions)
-- Ou comente em issues existentes
+- Open a [Discussion](https://github.com/your-username/simple-aes-encryptor/discussions)
+- Or comment on existing issues
 
-## 🙏 Reconhecimento
+## 🙏 Recognition
 
-Contribuidores serão listados no README!
+Contributors will be listed in the README!
 
 ---
 
-**Obrigado por contribuir!** 🚀
+**Thanks for contributing!** 🚀

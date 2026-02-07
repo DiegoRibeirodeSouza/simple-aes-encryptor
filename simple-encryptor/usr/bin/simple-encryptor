@@ -769,8 +769,8 @@ class ModernEncryptorApp(ParentClass):
         self._toggle_controls(False)
         
         try:
-            op_name = "CRIPTOGRAFIA (GCM)" if encrypt_mode else "DESCRIPTOGRAFIA (GCM)"
-            self._log(f"INICIANDO {op_name}...", 'cmd')
+            op_name = "ENCRYPTION (GCM)" if encrypt_mode else "DECRYPTION (GCM)"
+            self._log(f"STARTING {op_name}...", 'cmd')
             
             start_time = time.time()
             input_path = self.selected_path
@@ -782,7 +782,7 @@ class ModernEncryptorApp(ParentClass):
             chunk_size = 64 * 1024
             algo = self.algo_var.get()
             
-            # Preparação
+            # Preparation
             key = None
 
             if encrypt_mode:
@@ -792,12 +792,12 @@ class ModernEncryptorApp(ParentClass):
                 iv = secrets.token_bytes(iv_length) # 12 bytes nonce for GCM
                 
                 self._log(f"", 'info') 
-                self._log(f"--- PARÂMETROS GCM ({algo}) ---", 'cmd')
+                self._log(f"--- GCM PARAMETERS ({algo}) ---", 'cmd')
                 self._log(f"Salt (16 bytes): {salt.hex()}", 'data')
                 self._log(f"IV (12 bytes):   {iv.hex()}", 'data')
                 
                 key = self._derive_key(self.password_var.get(), salt)
-                self._log(f"Chave Derivada:  {key.hex()} (NÃO COMPARTILHE)", 'error')
+                self._log(f"Derived Key:     {key.hex()} (DO NOT SHARE)", 'error')
                 self._log(f"----------------------", 'cmd')
                 
                 if algo == "AES":
@@ -873,7 +873,7 @@ class ModernEncryptorApp(ParentClass):
             else:
                  # Decrypt
                  file_size = os.path.getsize(input_path)
-                 self._log("Lendo metadados...", 'info')
+                 self._log("Reading metadata...", 'info')
                  
                  start_offset = 0
                  with open(input_path, 'rb') as f_in:
@@ -886,7 +886,7 @@ class ModernEncryptorApp(ParentClass):
                          algo = "AES"
                          magic = b'' 
                     
-                    self._log(f"Algoritmo Detectado: {algo}", 'success')
+                    self._log(f"Algorithm Detected: {algo}", 'success')
                     
                     salt = f_in.read(salt_length)
                     iv = f_in.read(iv_length)
@@ -899,7 +899,7 @@ class ModernEncryptorApp(ParentClass):
                       f_in.seek(-tag_length, 2)
                       tag = f_in.read(tag_length)
                  
-                 self._log(f"Tag lida: {tag.hex()}", 'data')
+                 self._log(f"Tag Read: {tag.hex()}", 'data')
 
                  if algo == "AES":
                      cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
@@ -964,23 +964,23 @@ class ModernEncryptorApp(ParentClass):
                    f_out.write(tag)
                
                self._log(f"", 'info')
-               self._log(f"Tag de Autenticação (MAC): {tag.hex()}", 'success')
+               self._log(f"Authentication Tag (MAC): {tag.hex()}", 'success')
             else:
                # Decrypt doesn't need to write tag, it was already read.
                # We need to exclude the last 16 bytes (tag) from the stream read.
                self._process_decrypt_stream(input_path, output_path, decryptor, chunk_size, file_size, start_offset, tag_length, visualizer, iv)
 
             duration = time.time() - start_time
-            self._log(f"OPERAÇÃO GCM CONCLUÍDA em {duration:.2f}s", 'success')
-            self._log("Integridade Verificada com Sucesso.", 'success')
-            self._log(f"Saída: {os.path.basename(output_path)}", 'success')
+            self._log(f"GCM OPERATION COMPLETED in {duration:.2f}s", 'success')
+            self._log("Integrity Verified Successfully.", 'success')
+            self._log(f"Output: {os.path.basename(output_path)}", 'success')
             
-            subprocess.run(['notify-send', "Concluído", f"Arquivo: {os.path.basename(output_path)}"])
+            subprocess.run(['notify-send', "Done", f"File: {os.path.basename(output_path)}"])
             
         except Exception as e:
-            self._log(f"ERRO: {str(e)}", 'error')
+            self._log(f"ERROR: {str(e)}", 'error')
             if "Authentication failed" in str(e) or "Objective-C received" in str(e): # Cryptography raises generic error sometimes?
-                 self._log("FALHA DE INTEGRIDADE: Senha incorreta ou arquivo corrompido!", 'error')
+                 self._log("INTEGRITY FAILURE: Wrong Password or Corrupted File!", 'error')
             
             import traceback
             traceback.print_exc()
@@ -988,8 +988,7 @@ class ModernEncryptorApp(ParentClass):
             # Cleanup bad file
             if 'output_path' in locals() and os.path.exists(output_path):
                  os.remove(output_path)
-                 self._log("Arquivo de saída removido por segurança.", 'info')
-
+                 self._log("Output file removed for safety.", 'info')
         finally:
             self.is_processing = False
             self._toggle_controls(True)
