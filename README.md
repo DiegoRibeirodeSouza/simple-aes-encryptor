@@ -151,7 +151,7 @@ simple-aes-encryptor/
 ## 🎨 Screenshots
 
 ### Main Interface
-*[Screenshot of the main interface]*
+![Main Application Interface](docs/images/main_interface.png)
 
 ### Encryption Monitor
 The visual terminal shows in real-time:
@@ -159,6 +159,8 @@ The visual terminal shows in real-time:
 - Derived Key
 - Chunk-by-chunk progress
 - Hexdump of encrypted data
+
+![Real-time Encryption Monitor](docs/images/encryption_monitor.png)
 
 ```
 ======================================================================
