@@ -1,0 +1,72 @@
+cat << 'EOF' > recuperar_serpent.py
+import binascii
+import os
+import pyserpent
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.backends import default_backend
+
+# --- PARÂMETROS DO LOG (teste-serpent.txt) ---
+key_hex = "5011e15e32476c4c6f002b2b3f4265c6e9594efa7e5ecd963f3f931e11fbfc51"
+iv_hex = "724d4370640312dcb1d8d3e5"
+arquivo_entrada = "teste-serpent.txt.encrypted"
+
+def recuperar_serpent():
+    if not os.path.exists(arquivo_entrada):
+        print(f"❌ Arquivo '{arquivo_entrada}' não encontrado.")
+        return
+
+    try:
+        key = binascii.unhexlify(key_hex)
+        iv = binascii.unhexlify(iv_hex)
+
+        with open(arquivo_entrada, "rb") as f:
+            # PULA O CABEÇALHO v4.7: 1 (Magic) + 16 (Salt) + 12 (IV) = 29 bytes
+            f.seek(29)
+            dados_completos = f.read()
+            
+            # Separa Ciphertext da Tag HMAC (últimos 16 bytes)
+            ciphertext = dados_completos[:-16]
+            tag_esperada = dados_completos[-16:]
+
+        # 1. Validar Integridade (HMAC)
+        # O seu código v4.7 deriva a chave do HMAC como sha256(key)
+        hk = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        hk.update(key)
+        hmac_key = hk.finalize()
+        
+        h = hmac.HMAC(hmac_key, hashes.SHA256(), backend=default_backend())
+        h.update(ciphertext)
+        # O seu app trunca a tag para 16 bytes
+        tag_calculada = h.finalize()[:16]
+
+        if tag_calculada != tag_esperada:
+            print("⚠️ AVISO: A Tag HMAC não confere! O arquivo pode ter sido alterado.")
+        else:
+            print("✅ Integridade Confirmada (HMAC-SHA256).")
+
+        # 2. Descriptografar (Modo CTR com Serpent)
+        cipher = pyserpent.SerpentCipher(key)
+        ctr_val = 2
+        plaintext = bytearray()
+        
+        # Processa o keystream bloco a bloco (16 bytes)
+        for i in range(0, len(ciphertext), 16):
+            counter_block = iv + ctr_val.to_bytes(4, 'big')
+            keystream = cipher.encrypt(counter_block)
+            
+            chunk = ciphertext[i:i+16]
+            for b_cipher, b_key in zip(chunk, keystream):
+                plaintext.append(b_cipher ^ b_key)
+            ctr_val += 1
+
+        print("\n🔓 CONTEÚDO RECUPERADO (SERPENT):")
+        print("-" * 40)
+        print(plaintext.decode('utf-8', errors='ignore'))
+        print("-" * 40)
+
+    except Exception as e:
+        print(f"❌ Erro na extração: {e}")
+
+if __name__ == "__main__":
+    recuperar_serpent()
+EOF

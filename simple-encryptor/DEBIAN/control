@@ -1,21 +1,26 @@
 Package: simple-aes-encryptor
-Version: 3.15.0
+Version: 3.16.0
 Section: utils
 Priority: optional
 Architecture: all
 Depends: python3 (>= 3.9), python3-tk, python3-cryptography, zenity, libgcrypt20
+Recommends: pcscd, python3-pykcs11, python3-pyscard
 Maintainer: Diego <diego@localhost>
-Description: High Performance AES-GCM Encryptor
- Uma aplicação GUI moderna para criptografar (AES-GCM) arquivos
- e pastas com segurança total e alta performance.
+Description: High-Performance Encryptor with Token A3 Support
+ Aplicação GUI moderna para criptografar arquivos e pastas com alta 
+ performance e segurança máxima.
  .
- Características:
-  - Criptografia Autenticada AES-256-GCM (Mais rápido e seguro)
- de criptografia em tempo real.
+ Características principais:
+  - Criptografia AES-256-GCM e Serpent-256-CTR
+  - 🔑 NOVO: Suporte a Token A3 (certificados digitais ICP-Brasil)
+  - Interface gráfica CustomTkinter moderna
+  - Monitor de criptografia em tempo real
+  - Derivação de chave PBKDF2 com 100.000 iterações
+  - Visualização detalhada de rounds criptográficos
+  - Suporte para arquivos e pastas
+  - Batch encryption (múltiplos arquivos em arquivo único)
+  - Menu de contexto integrado (botão direito)
  .
- Características:
-  - Criptografia AES-256-CBC
-  - Interface gráfica intuitiva com Tkinter
-  - Monitor de criptografia em tempo real (estilo terminal)
-  - Derivação de chave PBKDF2 com 100,000 iterações
-  - Suporte para qualquer tipo de arquivo
+ Token A3: Criptografe arquivos que SÓ podem ser abertos com o token
+ físico inserido + PIN correto. Ideal para compliance LGPD e backups
+ seguros de documentos jurídicos/contábeis.

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+# Update shared library cache so /opt/safesign/lib is picked up
+ldconfig
+echo "SafeSign Legacy Driver installed."
+echo "Please verify that PJeOffice is pointing to: /usr/lib/libaetpkss.so.3"

@@ -423,6 +423,18 @@ import customtkinter as ctk
 import subprocess
 import shutil
 
+# Import Token A3 module
+import sys
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib', 'python3', 'dist-packages'))
+try:
+    from token_a3 import TokenA3Manager
+    HAS_TOKEN_A3 = True
+    print("✅ Token A3 module loaded successfully!")
+except ImportError as e:
+    HAS_TOKEN_A3 = False
+    print(f"⚠️  Token A3 module not found: {e}")
+
 # --- Configurações Visuais (CustomTkinter) ---
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("green")
@@ -451,8 +463,10 @@ class ModernEncryptorApp(ParentClass):
         super().__init__()
         
         # Janela Principal
-        self.title("Simple AES Encryptor | v3.2 Enhanced")
-        self.geometry("1000x750")
+        self.title("Simple Encryptor - AES/Serpent with Token A3 Support")
+        self.geometry("900x700")
+        self.minsize(1250, 600)  # Increased significantly to fit all buttons in one row
+        self.resizable(True, True)
         try:
              # Load installed application icon for window consistency
              icon_path = '/usr/share/icons/hicolor/256x256/apps/simple-encryptor.png'
@@ -467,7 +481,8 @@ class ModernEncryptorApp(ParentClass):
         self.password_var = ctk.StringVar()
         self.show_password_var = ctk.BooleanVar(value=False)
         self.status_var = ctk.StringVar(value="System Online - Select Algorithm")
-        self.visualize_deeply = ctk.BooleanVar(value=True)
+        self.log_verbosity = ctk.StringVar(value="normal")  # normal, detailed, full
+        self.full_vision_warned = False  # Track if warning was shown
         self.algo_var = ctk.StringVar(value="AES")
         
         # Filas para comunicação
@@ -560,15 +575,39 @@ class ModernEncryptorApp(ParentClass):
         act_box = ctk.CTkFrame(controls_frame, fg_color="transparent")
         act_box.grid(row=5, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
         
-        chk_vis = ctk.CTkCheckBox(act_box, text="Deep Vision (See Internals)", variable=self.visualize_deeply)
-        chk_vis.pack(side="left")
+        # Log Verbosity Radio Buttons
+        lbl_verbosity = ctk.CTkLabel(act_box, text="Log Detail:", font=('Roboto', 10))
+        lbl_verbosity.pack(side="left", padx=(0, 10))
         
+        radio_normal = ctk.CTkRadioButton(act_box, text="Normal", variable=self.log_verbosity, 
+                                          value="normal", font=('Roboto', 9))
+        radio_normal.pack(side="left", padx=2)
+        
+        radio_detailed = ctk.CTkRadioButton(act_box, text="Detailed", variable=self.log_verbosity, 
+                                            value="detailed", font=('Roboto', 9))
+        radio_detailed.pack(side="left", padx=2)
+        
+        radio_full = ctk.CTkRadioButton(act_box, text="Full (Deep Vision)", variable=self.log_verbosity, 
+                                        value="full", command=self._check_full_vision_warning, 
+                                        font=('Roboto', 9))
+        radio_full.pack(side="left", padx=2)
+        
+        # Token A3 buttons (right side)
+        self.btn_token_decrypt = ctk.CTkButton(act_box, text="🔓🔑 DECRYPT (TOKEN)", command=self._decrypt_with_token,
+                                       fg_color="#1a472a", hover_color="#2d5a42", width=160, height=40, font=('Roboto', 10))
+        self.btn_token_decrypt.pack(side="right", padx=(5, 0))
+
+        self.btn_token_encrypt = ctk.CTkButton(act_box, text="🔒🔑 ENCRYPT (TOKEN)", command=self._encrypt_with_token,
+                                       fg_color="#1a472a", hover_color="#2d5a42", width=160, height=40, font=('Roboto', 10))
+        self.btn_token_encrypt.pack(side="right", padx=(5, 0))
+        
+        # Standard buttons
         self.btn_decrypt = ctk.CTkButton(act_box, text="🔓 DECRYPT", command=self._decrypt_file,
-                                       fg_color="#333", hover_color="#444", width=180, height=40)
-        self.btn_decrypt.pack(side="right", padx=(10, 0))
+                                       fg_color="#333", hover_color="#444", width=150, height=40)
+        self.btn_decrypt.pack(side="right", padx=(5, 0))
 
         self.btn_encrypt = ctk.CTkButton(act_box, text="🔒 ENCRYPT", command=self._encrypt_file,
-                                       width=180, height=40)
+                                       width=150, height=40)
         self.btn_encrypt.pack(side="right")
 
         # --- Algo Selection ---
@@ -650,6 +689,394 @@ class ModernEncryptorApp(ParentClass):
 
     def _toggle_password(self):
         self.entry_pass.configure(show='' if self.show_password_var.get() else '•')
+    
+    def _mask_key(self, key_hex):
+        """Mask encryption key based on verbosity level"""
+        verbosity = self.log_verbosity.get()
+        
+        if verbosity == "full":
+            return f"{key_hex} (KEEP SECRET!)"
+        elif verbosity == "detailed":
+            # Show first 16 and last 8 chars
+            if len(key_hex) > 24:
+                return f"{key_hex[:16]}...{key_hex[-8:]} (hidden for security)"
+            return f"{key_hex[:8]}...{key_hex[-4:]} (hidden)"
+        else:  # normal
+            # Show only first 8 and last 4 chars
+            if len(key_hex) > 12:
+                return f"{key_hex[:8]}...{key_hex[-4:]} (hidden for security)"
+            return "*** (hidden for security)"
+    
+    def _check_full_vision_warning(self):
+        """Show security warning when enabling Full Deep Vision"""
+        if self.full_vision_warned:
+            return  # Already warned, allow toggle
+        
+        # Show warning dialog
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("⚠️ Security Warning")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        
+        result = [False]
+        
+        # Icon
+        lbl_icon = ctk.CTkLabel(dialog, text="⚠️", font=('Roboto', 64))
+        lbl_icon.pack(pady=(20, 10))
+        
+        # Title
+        lbl_title = ctk.CTkLabel(dialog, text="Full Deep Vision - Security Risk", 
+                                font=('Roboto', 18, 'bold'), text_color="#ff6b6b")
+        lbl_title.pack(pady=5)
+        
+        # Warning message
+        warning_text = (
+            "Full Deep Vision shows COMPLETE encryption keys in logs.\n\n"
+            "⚠️ CRITICAL WARNING:\n"
+            "Anyone with access to these logs can decrypt your files\n"
+            "without needing the password or Token A3!\n\n"
+            "This mode is for educational/debugging purposes only.\n\n"
+            "Only enable if you understand the security implications."
+        )
+        lbl_msg = ctk.CTkLabel(dialog, text=warning_text, font=('Roboto', 12), 
+                              wraplength=450, justify='center')
+        lbl_msg.pack(pady=15, padx=20)
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=(0, 20))
+        
+        def on_cancel():
+            result[0] = False
+            self.log_verbosity.set("normal")  # Revert to normal
+            dialog.destroy()
+        
+        def on_accept():
+            result[0] = True
+            self.full_vision_warned = True  # Don't show again
+            dialog.destroy()
+        
+        btn_cancel = ctk.CTkButton(btn_frame, text="❌ Cancel (Stay Safe)", width=160,
+                                   fg_color="gray", hover_color="#666", command=on_cancel)
+        btn_cancel.pack(side="left", padx=5)
+        
+        btn_accept = ctk.CTkButton(btn_frame, text="✅ I Understand, Enable", width=180,
+                                   fg_color="#d9534f", hover_color="#c9302c", command=on_accept)
+        btn_accept.pack(side="left", padx=5)
+        
+        # Center dialog
+        dialog.update()
+        dialog_width = 500
+        dialog_height = 400
+        x = (dialog.winfo_screenwidth() // 2) - (dialog_width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog_height // 2)
+        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        
+        dialog.grab_set()
+        dialog.wait_window()
+        
+        return result[0]
+    def _show_message(self, title, message, msg_type="info"):
+        """Shows modern CTk message dialog"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(title)
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        
+        # Icon based on type
+        icon_map = {"info": "ℹ️", "success": "✅", "error": "❌", "warning": "⚠️"}
+        icon = icon_map.get(msg_type, "ℹ️")
+        
+        # Icon label
+        lbl_icon = ctk.CTkLabel(dialog, text=icon, font=('Roboto', 48))
+        lbl_icon.pack(pady=(20, 10))
+        
+        # Title
+        lbl_title = ctk.CTkLabel(dialog, text=title, font=('Roboto', 16, 'bold'))
+        lbl_title.pack(pady=5)
+        
+        # Message
+        lbl_msg = ctk.CTkLabel(dialog, text=message, font=('Roboto', 12), 
+                              wraplength=400, justify='center')
+        lbl_msg.pack(pady=10)
+        
+        # OK Button
+        btn_ok = ctk.CTkButton(dialog, text="OK", width=120, command=dialog.destroy)
+        btn_ok.pack(pady=15)
+        
+        # Update and center AFTER creating all widgets
+        dialog.update()
+        dialog_width = 450
+        dialog_height = 250
+        x = (dialog.winfo_screenwidth() // 2) - (dialog_width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog_height // 2)
+        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        
+        dialog.grab_set()
+        dialog.wait_window()
+    
+    def _ask_confirm(self, title, message):
+        """Ask yes/no confirmation with modern CTk dialog"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(title)
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        
+        dialog.update()
+        
+        dialog_width = 400
+        dialog_height = 180
+        x = (dialog.winfo_screenwidth() // 2) - (dialog_width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog_height // 2)
+        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        
+        dialog.grab_set()
+        
+        result = [False]
+        
+        # Message
+        lbl = ctk.CTkLabel(dialog, text=message, font=('Roboto', 13), 
+                          wraplength=350, justify='center')
+        lbl.pack(pady=(30, 20))
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15)
+        
+        def on_yes():
+            result[0] = True
+            dialog.destroy()
+        
+        def on_no():
+            dialog.destroy()
+        
+        btn_yes = ctk.CTkButton(btn_frame, text="Yes", width=120, command=on_yes)
+        btn_yes.pack(side="left", padx=5)
+        
+        btn_no = ctk.CTkButton(btn_frame, text="No", width=120, 
+                              fg_color="gray", command=on_no)
+        btn_no.pack(side="left", padx=5)
+        
+        dialog.wait_window()
+        return result[0]
+    
+    def _ask_pin(self, title="Token A3 PIN"):
+        """Solicita PIN do token com opção de mostrar/esconder"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(title)
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        
+        # Forçar atualização ANTES de centralizar
+        dialog.update()
+        
+        # Definir tamanho e centralizar
+        dialog_width = 400
+        dialog_height = 200
+        x = (dialog.winfo_screenwidth() // 2) - (dialog_width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog_height // 2)
+        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        
+        dialog.grab_set()
+        
+        pin_result = [None]
+        show_var = ctk.BooleanVar(value=False)
+        
+        # Label
+        lbl = ctk.CTkLabel(dialog, text="Enter Token A3 PIN:", 
+                          font=('Roboto', 14))
+        lbl.pack(pady=(20, 10))
+        
+        # Entry
+        entry = ctk.CTkEntry(dialog, width=300, height=40, show="•",
+                           font=('Consolas', 14), justify='center')
+        entry.pack(pady=10)
+        
+        # Toggle show/hide
+        def toggle_visibility():
+            entry.configure(show="" if show_var.get() else "•")
+        
+        chk_show = ctk.CTkCheckBox(dialog, text="Show PIN", 
+                                  variable=show_var, command=toggle_visibility)
+        chk_show.pack(pady=5)
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15)
+        
+        def on_ok():
+            pin_result[0] = entry.get()
+            dialog.destroy()
+        
+        def on_cancel():
+            dialog.destroy()
+        
+        btn_ok = ctk.CTkButton(btn_frame, text="OK", width=120, command=on_ok)
+        btn_ok.pack(side="left", padx=5)
+        
+        btn_cancel = ctk.CTkButton(btn_frame, text="Cancel", width=120, 
+                                   fg_color="gray", command=on_cancel)
+        btn_cancel.pack(side="left", padx=5)
+        
+        # Enter = OK
+        entry.bind('<Return>', lambda e: on_ok())
+        
+        # Focar no entry DEPOIS de tudo criado
+        dialog.update()
+        entry.focus_set()
+        
+        # Wait for dialog
+        dialog.wait_window()
+        
+        return pin_result[0] if pin_result[0] else None
+    
+    def _encrypt_with_token(self):
+        """Encrypts file using Token A3"""
+        if not HAS_TOKEN_A3:
+            self._show_message("Token A3", "Token A3 module not installed!\n\nInstall: pip install PyKCS11 pyscard", "error")
+            return
+        
+        if not self.selected_path:
+            self._show_message("Token A3", "Please select a file first!", "warning")
+            return
+        
+        # Detectar token
+        self._log(f"🔍 Detectando Token A3...", 'info')
+        self.update()
+        
+        manager = TokenA3Manager()
+        success, msg = manager.detect_token()
+        
+        if not success:
+            self._log(f"❌ {msg}", 'error')
+            self._show_message("Token A3", f"{msg}\n\nPlease insert Token A3 and try again.", "error")
+            return
+        
+        self._log(f"✅ {msg}", 'success')
+        
+        # Request PIN
+        pin = self._ask_pin("Token A3 PIN")
+        if not pin:
+            self._log("⚠️  Operation cancelled", 'info')
+            return
+        
+        # Definir arquivo de saída
+        output_path = self.selected_path + ".token"
+        
+        # Desabilitar controles
+        self._toggle_controls("disabled")
+        self.progress.set(0.3)
+        self.update()
+        
+        try:
+            self._log(f"🔒 Criptografando com Token A3...", 'info')
+            self.update()
+            
+            success, msg = manager.encrypt_file_with_token(
+                self.selected_path,
+                output_path,
+                pin,
+                log_callback=self._log  # Pass logging to Token A3
+            )
+            
+            self.progress.set(1.0)
+            
+            if success:
+                self._log(f"✅ {msg}", 'success')
+                self._show_message("Success!", f"File encrypted:\n{output_path}\n\n🔒 Can only be opened with Token A3 + PIN!", "success")
+            else:
+                self._log(f"❌ {msg}", 'error')
+                self._show_message("Error", msg, "error")
+                
+        except Exception as e:
+            self._log(f"❌ Error: {e}", 'error')
+            self._show_message("Error", f"Encryption failed:\n{str(e)}", "error")
+        finally:
+            self._toggle_controls("normal")
+            self.progress.set(0)
+    
+    def _decrypt_with_token(self):
+        """Decrypts file using Token A3"""
+        if not HAS_TOKEN_A3:
+            self._show_message("Token A3", "Token A3 module not installed!\n\nInstall: pip install PyKCS11 pyscard", "error")
+            return
+        
+        if not self.selected_path:
+            self._show_message("Token A3", "Please select a .token file first!", "warning")
+            return
+        
+        if not self.selected_path.endswith('.token'):
+            # Create simple yes/no dialog
+            response = self._ask_confirm("Confirm", 
+                "File doesn't have .token extension.\nContinue anyway?")
+            if not response:
+                return
+        
+        # Detect token
+        self._log(f"🔍 Detecting Token A3...", 'info')
+        self.update()
+        
+        manager = TokenA3Manager()
+        success, msg = manager.detect_token()
+        
+        if not success:
+            self._log(f"❌ {msg}", 'error')
+            self._show_message("Token A3", f"{msg}\n\nPlease insert Token A3 and try again.", "error")
+            return
+        
+        self._log(f"✅ {msg}", 'success')
+        
+        # Request PIN
+        pin = self._ask_pin("Token A3 PIN")
+        if not pin:
+            self._log("⚠️  Operation cancelled", 'info')
+            return
+        
+        # Define output file
+        if self.selected_path.endswith('.token'):
+            output_path = self.selected_path[:-6]  # Remove .token
+        else:
+            output_path = self.selected_path + ".decrypted"
+        
+        # Disable controls
+        self._toggle_controls("disabled")
+        self.progress.set(0.3)
+        self.update()
+        
+        try:
+            self._log(f"🔓 Decrypting with Token A3...", 'info')
+            self.update()
+            
+            success, msg = manager.decrypt_file_with_token(
+                self.selected_path,
+                output_path,
+                pin,
+                log_callback=self._log  # Pass logging to Token A3
+            )
+            
+            self.progress.set(1.0)
+            
+            if success:
+                self._log(f"✅ {msg}", 'success')
+                self._show_message("Success!", f"File decrypted:\n{output_path}", "success")
+            else:
+                self._log(f"❌ {msg}", 'error')
+                if "PIN incorreto" in msg or "token diferente" in msg or "Incorrect PIN" in msg or "different token" in msg:
+                    self._show_message("Authentication Error", 
+                        "Decryption failed!\n\nPossible causes:\n"
+                        "• Incorrect PIN\n"
+                        "• Different token than the one used for encryption\n"
+                        "• Corrupted file", "error")
+                else:
+                    self._show_message("Error", msg, "error")
+                    
+        except Exception as e:
+            self._log(f"❌ Error: {e}", 'error')
+            self._show_message("Error", f"Decryption failed:\n{str(e)}", "error")
+        finally:
+            self._toggle_controls("normal")
+            self.progress.set(0)
+
 
     def _select_file(self):
         self._select_target(False)
@@ -720,23 +1147,54 @@ class ModernEncryptorApp(ParentClass):
                 if not os.path.islink(fp):
                     total_size += os.path.getsize(fp)
         return total_size
-
+    
     def _format_size(self, size):
+        """Format file size in human readable format"""
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size < 1024:
                 return f"{size:.2f} {unit}"
             size /= 1024
         return f"{size:.2f} TB"
 
-    def _log(self, message, tag='info'):
-        self.log_queue.put((message, tag))
+    def _log(self, text, tag='info'):
+        """Write formatted log entry with key masking support"""
+        
+        verbosity = self.log_verbosity.get()
+        
+        # VERBOSITY FILTERING
+        # Normal: Show only high-level info (info, success, error, cmd)
+        # Detailed: Show technical details (data, key masked)
+        # Full: Show everything (key unmasked)
+        
+        if verbosity == "normal":
+            if tag in ['data', 'key', 'tech']:
+                return # Hide technical details in Normal mode
+        
+        # Check if this is a key that needs masking
+        if 'TOKEN_KEY_' in text:
+            # Extract key and mask it
+            parts = text.split('TOKEN_KEY_')
+            if len(parts) == 2:
+                prefix = parts[0]
+                key_hex = parts[1]
+                
+                # In FULL mode, show UNMASKED key (warned user previously)
+                if verbosity == "full":
+                    text = f"{prefix}{key_hex} (UNMASKED - DEEP VISION)"
+                else:
+                    # In Normal/Detailed mode, MASK the key
+                    masked = self._mask_key(key_hex)
+                    text = f"{prefix}{masked}"
+        
+        timestamp = time.strftime('%H:%M:%S')
+        self.log_queue.put((timestamp, text, tag))
 
     def _update_ui_loop(self):
         try:
             while not self.log_queue.empty():
-                msg, tag = self.log_queue.get_nowait()
+                timestamp, msg, tag = self.log_queue.get_nowait()
                 self.txt_log.configure(state="normal")
-                # CTkTextbox insert signature: index, text, tags=None
+                # Removed timestamp prefix as requested by user to keep logs clean
                 self.txt_log.insert("end", f"{msg}\n", tag)
                 self.txt_log.see("end")
                 self.txt_log.configure(state="disabled")
@@ -799,7 +1257,7 @@ class ModernEncryptorApp(ParentClass):
         
         try:
             op_name = "ENCRYPTION (GCM)" if encrypt_mode else "DECRYPTION (GCM)"
-            self._log(f"STARTING {op_name}...", 'cmd')
+            self._log(f"STARTING {op_name}...", 'info')
             
             start_time = time.time()
             input_path = self.selected_path
@@ -821,12 +1279,12 @@ class ModernEncryptorApp(ParentClass):
                 iv = secrets.token_bytes(iv_length) # 12 bytes nonce for GCM
                 
                 self._log(f"", 'info') 
-                self._log(f"--- GCM PARAMETERS ({algo}) ---", 'cmd')
+                self._log(f"--- GCM PARAMETERS ({algo}) ---", 'data')
                 self._log(f"Salt (16 bytes): {salt.hex()}", 'data')
                 self._log(f"IV (12 bytes):   {iv.hex()}", 'data')
                 
                 key = self._derive_key(self.password_var.get(), salt)
-                self._log(f"Derived Key:     {key.hex()} (DO NOT SHARE)", 'error')
+                self._log(f"Derived Key:     TOKEN_KEY_{key.hex()}", 'key')
                 self._log(f"----------------------", 'cmd')
                 
                 if algo == "AES":
@@ -1018,7 +1476,7 @@ class ModernEncryptorApp(ParentClass):
             
             # Setup Visualizer
             visualizer = None
-            if self.visualize_deeply.get() and key:
+            if self.log_verbosity.get() == "full" and key:
                 if algo == "AES":
                     visualizer = AESVisualizer(key, self._log)
                 else:
@@ -1032,7 +1490,7 @@ class ModernEncryptorApp(ParentClass):
                    f_out.write(tag)
                
                self._log(f"", 'info')
-               self._log(f"Authentication Tag (MAC): {tag.hex()}", 'success')
+               self._log(f"Authentication Tag (MAC): {tag.hex()}", 'data')
             else:
                # Decrypt doesn't need to write tag, it was already read.
                # We need to exclude the last 16 bytes (tag) from the stream read.

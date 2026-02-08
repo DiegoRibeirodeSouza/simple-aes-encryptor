@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+# Remove the config file before running ldconfig (file is removed by dpkg later, but needed for clean removal?)
+# Actually dpkg removes files. We just need to update cache.
+# The config file /etc/ld.so.conf.d/safesign-legacy.conf will be removed by dpkg *after* this script?
+# No, prerm runs before removal.
+# We should run ldconfig in postrm.
+exit 0

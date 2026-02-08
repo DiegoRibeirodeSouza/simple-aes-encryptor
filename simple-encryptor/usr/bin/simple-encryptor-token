@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""
+CLI para criptografia com Token A3
+Uso:
+    simple-encryptor-token --encrypt arquivo.pdf --output arquivo.pdf.token
+    simple-encryptor-token --decrypt arquivo.pdf.token --output arquivo.pdf
+"""
+
+import sys
+import os
+import argparse
+
+# Adicionar dist-packages ao path
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib', 'python3', 'dist-packages'))
+
+from token_a3 import TokenA3Manager
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="🔒 Criptografia com Token A3 (ICP-Brasil)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Exemplos:
+  # Criptografar
+  simple-encryptor-token -e contrato.pdf -o contrato.pdf.token
+  
+  # Descriptografar
+  simple-encryptor-token -d contrato.pdf.token -o contrato.pdf
+  
+IMPORTANTE: Arquivos criptografados com token SÓ podem ser abertos com o mesmo token!
+        """
+    )
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-e', '--encrypt', metavar='ARQUIVO', help='Criptografar arquivo')
+    group.add_argument('-d', '--decrypt', metavar='ARQUIVO', help='Descriptografar arquivo')
+    group.add_argument('--test', action='store_true', help='Testar token')
+    
+    parser.add_argument('-o', '--output', metavar='SAÍDA', help='Arquivo de saída')
+    parser.add_argument('-p', '--pin', metavar='PIN', help='PIN do token (se não fornecido, será solicitado)')
+    
+    args = parser.parse_args()
+    
+    manager = TokenA3Manager()
+    
+    # Modo teste
+    if args.test:
+        print("🔍 Detectando token A3...")
+        success, msg = manager.detect_token()
+        print(msg)
+        
+        if success:
+            pin = args.pin or input("Digite o PIN do token: ")
+            success, msg = manager.open_session(pin)
+            print(msg)
+            
+            if success:
+                cert, msg = manager.get_certificate()
+                if cert:
+                    print(f"\n✅ Certificado Digital:")
+                    print(f"   Titular: {cert.subject.rfc4514_string()}")
+                    print(f"   Emissor: {cert.issuer.rfc4514_string()}")
+                    print(f"   Válido até: {cert.not_valid_after_utc.strftime('%d/%m/%Y')}")
+                    print(f"   Número de série: {hex(cert.serial_number)}")
+                else:
+                    print(f"❌ {msg}")
+                manager.session.logout()
+                manager.session.closeSession()
+        return 0
+    
+    # Criptografar
+    if args.encrypt:
+        if not args.output:
+            print("❌ Erro: Especifique o arquivo de saída com -o")
+            return 1
+        
+        pin = args.pin or input("Digite o PIN do token: ")
+        
+        print(f"🔒 Criptografando {args.encrypt} com Token A3...")
+        success, msg = manager.encrypt_file_with_token(args.encrypt, args.output, pin)
+        
+        if success:
+            print(f"✅ {msg}")
+            return 0
+        else:
+            print(f"❌ {msg}")
+            return 1
+    
+    # Descriptografar
+    if args.decrypt:
+        if not args.output:
+            print("❌ Erro: Especifique o arquivo de saída com -o")
+            return 1
+        
+        pin = args.pin or input("Digite o PIN do token: ")
+        
+        print(f"🔓 Descriptografando {args.decrypt} com Token A3...")
+        success, msg = manager.decrypt_file_with_token(args.decrypt, args.output, pin)
+        
+        if success:
+            print(f"✅ {msg}")
+            return 0
+        else:
+            print(f"❌ {msg}")
+            return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

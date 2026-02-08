@@ -1,0 +1,14 @@
+Package: safesign-linux-legacy
+Version: 3.8.0-bundled
+Section: admin
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.14), libgdbm-compat4t64, libgdk-pixbuf-xlib-2.0-0
+Maintainer: Diego Ribeiro <diego@example.com>
+Description: SafeSign Identity Client (Bundled)
+ This package includes the proprietary SafeSign Identity Client
+ driver (libaetpkss) bundled with necessary legacy libraries
+ (libtiff5, libwxgtk3.0, etc.) that are no longer available
+ in Debian 13 / Ubuntu 24.04.
+ .
+ It installs legacy libs to /opt/safesign/lib to avoid system conflicts.

@@ -1,0 +1,51 @@
+cat << 'EOF' > recuperar_v5.py
+import binascii
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+# --- DADOS DO SEU LOG (teste 2.encrypted) ---
+key_hex = "ff222dd95ae3bf94431a11f16842dbe9f3875287cf030b45b326b87373b14213"
+iv_hex = "c149af23521572a66594709c"
+counter_start = "00000002"
+arquivo_entrada = "teste 2.encrypted"
+
+def recuperar_v47():
+    if not os.path.exists(arquivo_entrada):
+        print(f"❌ Arquivo '{arquivo_entrada}' não encontrado.")
+        return
+
+    try:
+        # 1. Preparar Chave e IV (Nonce)
+        key = binascii.unhexlify(key_hex)
+        # O GCM Counter Block do seu log: IV + 00000002
+        nonce_full = binascii.unhexlify(iv_hex + counter_start)
+
+        with open(arquivo_entrada, "rb") as f:
+            # PULA O CABEÇALHO DA VERSÃO 4.7: 
+            # 1 (Magic) + 16 (Salt) + 12 (IV) = 29 bytes
+            f.seek(29)
+            dados_restantes = f.read()
+            
+            # Separa o Ciphertext da Tag (últimos 16 bytes)
+            ciphertext = dados_restantes[:-16]
+
+        # 2. Motor AES-CTR (Forense)
+        cipher = Cipher(algorithms.AES(key), modes.CTR(nonce_full))
+        decryptor = cipher.decryptor()
+        
+        plaintext_bytes = decryptor.update(ciphertext) + decryptor.finalize()
+
+        # 3. Resultado
+        print("\n🔓 CONTEÚDO RECUPERADO (ALINHAMENTO v4.7):")
+        print("-" * 40)
+        print(plaintext_bytes.decode('utf-8'))
+        print("-" * 40)
+        print(f"✅ Sucesso! Offset de 29 bytes aplicado corretamente.")
+
+    except Exception as e:
+        print(f"❌ Erro na extração: {e}")
+        print("Dica: Se o erro persistir, o arquivo pode ser de uma versão anterior sem o Magic Byte.")
+
+if __name__ == "__main__":
+    recuperar_v47()
+EOF

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0] - 2026-02-07
+### Added
+- 🔑 **Token A3 Support (ICP-Brasil)**: Full integration with hardware tokens (smartcards) for secure file encryption.
+    - Uses digital certificate fingerprint + PIN for deterministic key derivation.
+    - Dedicated "ENCRYPT (TOKEN)" and "DECRYPT (TOKEN)" buttons.
+    - Auto-detection of inserted tokens.
+- 📝 **Advanced Logging System**:
+    - **3 Verbosity Levels**:
+        - **Normal**: Clean, user-friendly logs (hides technical info).
+        - **Detailed**: Shows Salt, IV, MAC, and *masked* keys.
+        - **Full**: Shows *unmasked* keys and deep algorithmic visualization ("Hacker Mode").
+    - **Key Masking**: Sensitive keys are partially hidden by default (`abc...xyz`) for security.
+    - **Clean UI**: Removed timestamps for better log alignment.
+- 🎨 **UI Overhaul**:
+    - **Wider Window**: Increased to 1250px to accommodate all controls comfortaby.
+    - **Modern Dialogs**: Replaced system message boxes with themed `CustomTkinter` dialogs (PIN entry, confirmations, alerts).
+### Fixed
+- 🐛 **Crash Fixes**: Resolved issues with `_format_size` (file selection) and `visualize_deeply` (encryption).
+- 🐛 **Layout**: Fixed button visibility issues on smaller window sizes.
+
 ## [3.15.0] - 2026-02-07
 ### Added
 - 📦 **Single Archive Encryption**: When selecting multiple files/folders, they are now automatically bundled into a **single encrypted archive** (`Encrypted_Archive_TIMESTAMP.tar.encrypted`).

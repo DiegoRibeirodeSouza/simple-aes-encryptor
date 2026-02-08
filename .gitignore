@@ -82,4 +82,6 @@ simple-encryptor.deb
 
 # Temporary files
 tmp/
-temp/
+
+# Business & Strategy (Internal)
+business_docs/

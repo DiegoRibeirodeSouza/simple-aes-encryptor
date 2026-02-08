@@ -21,6 +21,8 @@
 ### ✨ Features
 
 - 🔐 **Multi-Algorithm**: AES-256-GCM (Standard) & Serpent-256 (High Security)
+- 🔑 **Token A3 Support**: Hardware-based encryption using ICP-Brasil digital certificates (Smartcards/Tokens).
+- 📝 **Advanced Logging**: 3 levels of verbosity (Normal, Detailed, Full/Deep Vision) with security key masking.
 - 🚀 **Turbo Performance**: Custom C backend (`libserpent`) for Serpent acceleration
 - 🔑 **PBKDF2**: Key derivation with HMAC-SHA256
 - 🎨 **Modern Interface**: CustomTkinter with Dark/Matrix theme
@@ -83,6 +85,17 @@ simple-encryptor-cli -d my_file.txt.encrypted -p my_password
 
 **Via Menu:** Search for "Simple AES Encryptor" in your applications menu (Utilities → Security)
 
+### 📂 File Manager Integration (Right-Click)
+
+The app integrates seamlessly with your file manager (Nautilus, Nemo, Caja, Thunar).
+
+1.  **Encrypt Single File**: Right-click -> Scripts -> `Criptografar (AES)`.
+2.  **Encrypt Folder**: Right-click folder -> Scripts -> `Criptografar (AES)`.
+3.  **Batch Archive (Multiple Items)**:
+    - Select multiple files and folders.
+    - Right-click -> Scripts -> `Criptografar (AES)`.
+    - The app automatically creates a **Single Archive** (`Encrypted_Archive_DATE_TIME.tar.encrypted`) containing everything.
+
 ### Encrypt a File
 
 1. Click on **"Select File"**
@@ -98,6 +111,26 @@ simple-encryptor-cli -d my_file.txt.encrypted -p my_password
 2. Enter the **same password** used for encryption
 3. Click on **"🔓 Decrypt"**
 4. Original file will be restored
+
+### 🔑 Token A3 Encryption (Hardware)
+
+**Requirements:**
+- A valid A3 Token/Smartcard (ICP-Brasil standard, e.g., G&D StarSign).
+- Drivers installed (`pcscd`, `libaetpkss`).
+
+**How to use:**
+1. Insert your Token A3 into the USB port.
+2. Select a file/folder.
+3. Click **"🔒🔑 ENCRYPT (TOKEN)"**.
+4. Enter your **Token PIN** in the secure dialog.
+5. The file will be encrypted using a key derived from your digital certificate's fingerprint + PIN.
+   - Result: `file.pdf.token`
+   - **Security**: Only the *physical token* + *correct PIN* can decrypt it.
+
+**Decryption:**
+1. Select the `.token` file.
+2. Click **"🔓🔑 DECRYPT (TOKEN)"**.
+3. Insert Token and enter PIN.
 
 ## 🔧 How It Works
 
