@@ -1,8 +1,0 @@
-Este é um arquivo de teste para criptografia com Token A3.
-
-Conteúdo confidencial:
-- CPF: 123.456.789-00
-- Conta bancária: Ag 1234 CC 56789-0
-- Senha: teste123
-
-Este arquivo só poderá ser descriptografado com o token A3 físico inserido no computador!
